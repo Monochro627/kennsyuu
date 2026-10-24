@@ -4,19 +4,56 @@
  * 書き出し結果はドキュメントの更新日時ごとにドライブへキャッシュする。
  */
 
+// 表示の作り方を変えたら上げる（古いキャッシュを使わないため）
+var MANUAL_RENDER_VERSION = 'v3';
+
 var MANUAL_TAGS = { h1: 'h2', h2: 'h2', h3: 'h3', h4: 'h4', h5: 'h4', h6: 'h4', p: 'p', ul: 'ul', ol: 'ol', li: 'li',
   table: 'table', tbody: 'tbody', tr: 'tr', td: 'td', th: 'td', br: 'br', hr: 'hr' };
 
-/** <style> の中から太字・下線のクラス名を集める */
+/**
+ * <style> の中から、文字の装飾（太字・斜体・下線・文字色・背景色）をクラスごとに集める。
+ * 色は #rrggbb だけを通し、黒い文字色と白い背景は既定の見た目なので無視する。
+ */
 function styledClasses_(html) {
-  var bold = {};
+  var out = {};
   var re = /\.(c\d+)\{([^}]*)\}/g;
   var m;
   var style = (html.match(/<style[^>]*>([\s\S]*?)<\/style>/i) || [])[1] || '';
   while ((m = re.exec(style)) !== null) {
-    if (/font-weight:\s*700/.test(m[2])) bold[m[1]] = true;
+    var s = parseCss_(m[2]);
+    if (Object.keys(s).length) out[m[1]] = s;
   }
-  return bold;
+  return out;
+}
+
+/** CSS の宣言から、表示に使う装飾だけを取り出す（書き出し方によってクラスとインラインの両方がある） */
+function parseCss_(css) {
+  var s = {};
+  if (/font-weight:\s*700/.test(css)) s.bold = true;
+  if (/font-style:\s*italic/.test(css)) s.italic = true;
+  if (/text-decoration:\s*underline/.test(css)) s.underline = true;
+  var color = css.match(/(?:^|;)\s*color:\s*(#[0-9a-fA-F]{6})/);
+  // 黒は既定の文字色、#1155cc はリンクの既定色なので無視する
+  if (color && !/^#(0{6}|1155cc)$/i.test(color[1])) s.color = color[1].toLowerCase();
+  var bg = css.match(/background-color:\s*(#[0-9a-fA-F]{6})/);
+  if (bg && !/^#f{6}$/i.test(bg[1])) s.bg = bg[1].toLowerCase();
+  return s;
+}
+
+/** クラスの装飾を、開きタグと閉じタグの組にする */
+function spanTags_(styles) {
+  var s = {};
+  styles.forEach(function (x) { Object.keys(x).forEach(function (k) { s[k] = x[k]; }); });
+  var open = '';
+  var close = '';
+  if (s.bold) { open += '<b>'; close = '</b>' + close; }
+  if (s.italic) { open += '<i>'; close = '</i>' + close; }
+  if (s.underline) { open += '<u>'; close = '</u>' + close; }
+  var css = [];
+  if (s.color) css.push('color:' + s.color);
+  if (s.bg) css.push('background-color:' + s.bg);
+  if (css.length) { open += '<span style="' + css.join(';') + '">'; close = '</span>' + close; }
+  return [open, close];
 }
 
 /** Googleのリダイレクト付きリンクを元のURLに戻す */
@@ -30,7 +67,7 @@ function realHref_(href) {
  * 見出しには目次用の id を付け、目次の配列も返す。
  */
 function sanitizeDocHtml_(html) {
-  var bold = styledClasses_(html);
+  var classes = styledClasses_(html);
   var body = html.replace(/^[\s\S]*?<body[^>]*>/i, '').replace(/<\/body>[\s\S]*$/i, '')
     .replace(/<style[\s\S]*?<\/style>/gi, '').replace(/<script[\s\S]*?<\/script>/gi, '');
   var re = /<(\/?)([a-zA-Z0-9]+)([^>]*)>|([^<]+)/g;
@@ -51,9 +88,11 @@ function sanitizeDocHtml_(html) {
     if (tag === 'span') {
       if (closing) { out.push(stack.pop() || ''); continue; }
       var cls = (attr_(attrs, 'class') || '').split(/\s+/);
-      var isBold = cls.some(function (c) { return bold[c]; });
-      out.push(isBold ? '<b>' : '');
-      stack.push(isBold ? '</b>' : '');
+      var styles = cls.filter(function (c) { return classes[c]; }).map(function (c) { return classes[c]; });
+      styles.push(parseCss_(decodeEntities_(attr_(attrs, 'style') || '')));
+      var tags = spanTags_(styles);
+      out.push(tags[0]);
+      stack.push(tags[1]);
       continue;
     }
     if (tag === 'a') {
@@ -91,7 +130,7 @@ function sanitizeDocHtml_(html) {
     out.push('<' + mapped + '>');
   }
   var clean = out.join('')
-    .replace(/<b><\/b>/g, '')
+    .replace(/<(b|i|u)><\/\1>/g, '')
     .replace(/<(p|li|h2|h3|h4|td)>(\s|&nbsp;)*<\/\1>/g, '')
     .replace(/<figure><img/g, '<figure><img');
   toc.forEach(function (t) { t.text = t.text.replace(/\s+/g, ' ').trim(); });
@@ -135,7 +174,7 @@ function api_getManual(materialId) {
   if (!docId) return base;
 
   var file = DriveApp.getFileById(docId);
-  var cacheName = docId + '_' + file.getLastUpdated().getTime() + '.json';
+  var cacheName = docId + '_' + file.getLastUpdated().getTime() + '_' + MANUAL_RENDER_VERSION + '.json';
   var folder = manualCacheFolder_();
   var hit = folder.getFilesByName(cacheName);
   if (hit.hasNext()) {
