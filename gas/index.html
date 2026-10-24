@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --bg: #f4f4f2; --card: #fff; --text: #1a1a1a; --muted: #6b6b6b; --line: #e3e3e0;
+    --accent: #111; --accent-text: #fff; --soft: #f0f0ec; --ok: #1f7a4d; --ok-soft: #e3f3ea;
+    --warn: #9a5b00; --warn-soft: #fff4dd; --danger: #b42318;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif; padding-bottom: 76px; }
+  header { background: var(--accent); color: var(--accent-text); padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  header h1 { margin: 0; font-size: 1.05rem; letter-spacing: .06em; }
+  header .me { font-size: .8rem; opacity: .8; text-align: right; }
+  main { max-width: 860px; margin: 0 auto; padding: 16px; }
+  nav.tabs { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card); border-top: 1px solid var(--line); display: flex; z-index: 10; }
+  nav.tabs button { flex: 1; border: 0; background: none; padding: 8px 2px 10px; font: inherit; font-size: .7rem; color: var(--muted); cursor: pointer; }
+  nav.tabs button span { display: block; font-size: 1.2rem; line-height: 1.3; }
+  nav.tabs button.active { color: var(--text); font-weight: 700; }
+  @media (min-width: 760px) {
+    body { padding-bottom: 0; }
+    nav.tabs { position: sticky; top: 0; bottom: auto; border-top: 0; border-bottom: 1px solid var(--line); }
+    nav.tabs button { font-size: .85rem; padding: 10px 4px; }
+    nav.tabs button span { display: inline; font-size: 1rem; margin-right: 4px; }
+  }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; }
+  .card h2 { margin: 0 0 8px; font-size: 1rem; }
+  .muted { color: var(--muted); }
+  .small { font-size: .8rem; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .spacer { flex: 1; }
+  .badge { display: inline-block; font-size: .7rem; padding: 1px 8px; border-radius: 99px; background: var(--soft); color: var(--muted); white-space: nowrap; }
+  .badge.req { background: var(--accent); color: var(--accent-text); }
+  .badge.ok { background: var(--ok-soft); color: var(--ok); }
+  .badge.warn { background: var(--warn-soft); color: var(--warn); }
+  .bar { height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
+  .bar > div { height: 100%; background: var(--ok); transition: width .3s; }
+  .big { font-size: 1.6rem; font-weight: 700; }
+  select, input, textarea { font: inherit; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--text); width: 100%; }
+  textarea { min-height: 84px; resize: vertical; }
+  label.field { display: block; margin-bottom: 10px; font-size: .85rem; color: var(--muted); }
+  label.field > * { margin-top: 4px; }
+  .btn { display: inline-block; border: 0; border-radius: 99px; padding: 9px 18px; font: inherit; font-weight: 700; background: var(--accent); color: var(--accent-text); cursor: pointer; text-decoration: none; }
+  .btn.sub { background: var(--soft); color: var(--text); }
+  .btn:disabled { opacity: .5; cursor: wait; }
+  .check { display: flex; gap: 10px; align-items: flex-start; padding: 7px 0; border-top: 1px solid var(--line); }
+  .check:first-child { border-top: 0; }
+  .check input { width: 20px; height: 20px; margin-top: 2px; flex: none; accent-color: var(--ok); }
+  .check .t { flex: 1; }
+  .check.done .t > div:first-child { color: var(--muted); text-decoration: line-through; }
+  details.phase { background: var(--card); border: 1px solid var(--line); border-radius: 12px; margin-bottom: 10px; }
+  details.phase > summary { list-style: none; cursor: pointer; padding: 12px 16px; display: flex; gap: 8px; align-items: center; }
+  details.phase > summary::-webkit-details-marker { display: none; }
+  details.phase > summary::before { content: "▸"; color: var(--muted); }
+  details.phase[open] > summary::before { content: "▾"; }
+  details.phase.current { border-color: var(--accent); }
+  details.phase .body { padding: 0 16px 10px; }
+  .list-item { display: flex; gap: 10px; align-items: center; width: 100%; text-align: left; background: none; border: 0; border-top: 1px solid var(--line); padding: 10px 0; font: inherit; color: inherit; cursor: pointer; }
+  .list-item:first-child { border-top: 0; }
+  .list-item .t { flex: 1; min-width: 0; }
+  .watched { color: var(--ok); font-weight: 700; }
+  table.sum { width: 100%; border-collapse: collapse; font-size: .85rem; }
+  table.sum th, table.sum td { text-align: left; padding: 8px 6px; border-top: 1px solid var(--line); vertical-align: middle; }
+  table.sum tr.click { cursor: pointer; }
+  table.sum tr.click:hover { background: var(--soft); }
+  .principles ol { margin: 6px 0 0; padding-left: 1.4em; }
+  .toast { position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%); background: #222; color: #fff; padding: 10px 16px; border-radius: 10px; font-size: .85rem; z-index: 30; max-width: 90vw; }
+  .toast.err { background: var(--danger); }
+  .modal { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 20; display: flex; align-items: center; justify-content: center; padding: 12px; }
+  .modal .panel { background: var(--card); border-radius: 12px; width: min(900px, 100%); max-height: 94vh; overflow: auto; }
+  .modal .head { display: flex; gap: 8px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--card); }
+  .modal .head strong { flex: 1; }
+  .modal .close { border: 0; background: none; font-size: 1.4rem; cursor: pointer; }
+  .modal .content { padding: 14px; }
+  .video { position: relative; padding-top: 56.25%; background: #000; border-radius: 8px; overflow: hidden; }
+  .video iframe, .docframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+  .docwrap { position: relative; height: 75vh; }
+  .note { background: var(--warn-soft); color: var(--warn); border-radius: 8px; padding: 8px 10px; font-size: .85rem; margin: 10px 0; }
+  .empty { text-align: center; color: var(--muted); padding: 24px 0; }
+  .loading { text-align: center; color: var(--muted); padding: 60px 0; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+  @media (max-width: 520px) { .grid2 { grid-template-columns: 1fr; } .hide-sm { display: none; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>MONOCHRO 新人研修</h1>
+  <div class="me" id="me"></div>
+</header>
+<nav class="tabs" id="tabs"></nav>
+<main id="view"><div class="loading">読み込み中…</div></main>
+<div id="modal-root"></div>
+
+<script>
+'use strict';
+var TABS = [
+  { id: 'home', icon: '🎓', label: '卒業フロー' },
+  { id: 'all', icon: '👥', label: 'みんな' },
+  { id: 'elearning', icon: '🎬', label: 'eラーニング' },
+  { id: 'manuals', icon: '📘', label: 'マニュアル' },
+  { id: 'roleplay', icon: '🎙', label: 'ロープレ' },
+  { id: 'admin', icon: '⚙', label: '管理', staff: true }
+];
+var ROLEPLAY_TOPICS = ['【試験①】カウンセリング面談', '【試験②】ヒアリング物件提案', '【試験③】初期費用＆申込後の流れ',
+  '【試験④】アウトトーク', '【試験⑤】（紹介）初回LINE～初回電話まで', '【試験⑥】バリュートーク', '【試験⑦】マイストーリー',
+  'ヒアリング', '物件提案', 'カウンセリング面談', 'LINEロープレ', 'アポ', 'マイストーリー', '業界説明', 'コンセプトマップ',
+  '初期費用の説明', '申込み後の流れ', 'クロージング', 'アウトトーク', '紹介依頼'];
+var PRINCIPLES = ['質問なき指導は行わない', '「どうすればいいですか？」は絶対NG', 'メモ無き同じ質問は絶対NG', '必ず自分で調べてから質問'];
+
+var S = { data: null, tab: 'home', trainee: null, progress: null, roleplays: null, notes: null, filter: '' };
+
+// ---------- 共通 ----------
+function call(fn) {
+  var args = Array.prototype.slice.call(arguments, 1);
+  return new Promise(function (resolve, reject) {
+    var r = google.script.run.withSuccessHandler(resolve).withFailureHandler(function (e) { reject(e); });
+    r[fn].apply(r, args);
+  });
+}
+function h(tag, attrs) {
+  var el = document.createElement(tag);
+  attrs = attrs || {};
+  Object.keys(attrs).forEach(function (k) {
+    var v = attrs[k];
+    if (v === null || v === undefined || v === false) return;
+    if (k === 'text') el.textContent = v;
+    else if (k === 'class') el.className = v;
+    else if (k.indexOf('on') === 0) el.addEventListener(k.slice(2), v);
+    else el.setAttribute(k, v === true ? '' : v);
+  });
+  for (var i = 2; i < arguments.length; i++) append(el, arguments[i]);
+  return el;
+}
+function append(el) {
+  for (var i = 1; i < arguments.length; i++) {
+    var c = arguments[i];
+    if (c === null || c === undefined || c === false) continue;
+    if (Array.isArray(c)) { c.forEach(function (x) { append(el, x); }); continue; }
+    el.appendChild(typeof c === 'string' || typeof c === 'number' ? document.createTextNode(String(c)) : c);
+  }
+}
+function toast(msg, isErr) {
+  var t = h('div', { class: 'toast' + (isErr ? ' err' : ''), text: msg });
+  document.body.appendChild(t);
+  setTimeout(function () { t.remove(); }, isErr ? 6000 : 2500);
+}
+function errMsg(e) { return (e && e.message) ? e.message : String(e); }
+function isStaff() { var r = S.data.me.role; return r === '管理者' || r === '教育担当'; }
+function trainees() { return S.data.members.filter(function (m) { return m.role === '研修生' && m.status !== '退職'; }); }
+function youtubeId(url) { var m = String(url).match(/(?:youtu\.be\/|v=|embed\/)([\w-]{11})/); return m && m[1]; }
+function previewUrl(url) {
+  return String(url).replace(/\/(edit|view)([?#].*)?$/, '/preview');
+}
+function openModal(title, body, link) {
+  var root = document.getElementById('modal-root');
+  var close = function () { root.innerHTML = ''; document.removeEventListener('keydown', onKey); };
+  var onKey = function (e) { if (e.key === 'Escape') close(); };
+  document.addEventListener('keydown', onKey);
+  root.innerHTML = '';
+  root.appendChild(h('div', { class: 'modal', onclick: function (e) { if (e.target.classList.contains('modal')) close(); } },
+    h('div', { class: 'panel' },
+      h('div', { class: 'head' }, h('strong', { text: title }),
+        link ? h('a', { href: link, target: '_blank', rel: 'noopener', class: 'small', text: '別タブで開く ↗' }) : null,
+        h('button', { class: 'close', 'aria-label': '閉じる', onclick: close, text: '×' })),
+      h('div', { class: 'content' }, body))));
+  return close;
+}
+
+// ---------- 起動 ----------
+function boot() {
+  call('api_bootstrap').then(function (d) {
+    S.data = d;
+    document.getElementById('me').textContent = d.me.name + '（' + d.me.role + '）';
+    if (d.me.role === '研修生') S.trainee = d.me.name;
+    else S.trainee = (trainees()[0] || {}).name || null;
+    var hash = location.hash.replace('#', '');
+    if (TABS.some(function (t) { return t.id === hash; })) S.tab = hash;
+    renderTabs();
+    render();
+  }).catch(function (e) {
+    document.getElementById('view').innerHTML = '';
+    append(document.getElementById('view'), h('div', { class: 'card' }, h('h2', { text: 'ひらけませんでした' }), h('p', { text: errMsg(e) })));
+  });
+}
+function renderTabs() {
+  var nav = document.getElementById('tabs');
+  nav.innerHTML = '';
+  TABS.filter(function (t) { return !t.staff || isStaff(); }).forEach(function (t) {
+    nav.appendChild(h('button', { class: S.tab === t.id ? 'active' : '', onclick: function () { go(t.id); } }, h('span', { text: t.icon }), t.label));
+  });
+}
+function go(tab) {
+  S.tab = tab;
+  try { history.replaceState(null, '', '#' + tab); } catch (e) { /* GAS の iframe では失敗することがある */ }
+  renderTabs();
+  render();
+  window.scrollTo(0, 0);
+}
+function render() {
+  var v = document.getElementById('view');
+  v.innerHTML = '';
+  var fn = { home: viewHome, all: viewAll, elearning: viewElearning, manuals: viewManuals, roleplay: viewRoleplay, admin: viewAdmin }[S.tab];
+  append(v, fn());
+}
+
+// ---------- 卒業フロー ----------
+function loadProgress(name) {
+  S.progress = null;
+  if (S.loadingFor === name) return;
+  S.loadingFor = name;
+  call('api_getProgress', name).then(function (p) {
+    S.loadingFor = null;
+    if (S.trainee === name) { S.progress = p; if (S.tab === 'home') render(); }
+  }).catch(function (e) { S.loadingFor = null; toast(errMsg(e), true); });
+}
+function canEdit() { return isStaff() || S.data.me.name === S.trainee; }
+
+function viewHome() {
+  var wrap = h('div');
+  if (!S.trainee) {
+    append(wrap, h('div', { class: 'card' }, h('h2', { text: '研修生がまだいません' }), h('p', { class: 'muted', text: '「管理」タブから研修生を追加してください。' })));
+    return wrap;
+  }
+  if (isStaff() || S.data.me.name !== S.trainee) {
+    var sel = h('select', { onchange: function () { S.trainee = this.value; loadProgress(S.trainee); render(); } },
+      trainees().map(function (t) { var o = h('option', { value: t.name, text: t.name }); if (t.name === S.trainee) o.selected = true; return o; }));
+    append(wrap, h('div', { class: 'card row' }, h('span', { class: 'muted small', text: '表示中の研修生' }), h('div', { class: 'spacer' }, sel)));
+  }
+  append(wrap, h('details', { class: 'card principles' },
+    h('summary', null, h('strong', { text: '質問の4大原則' })),
+    h('ol', null, PRINCIPLES.map(function (p) { return h('li', { text: p }); })),
+    h('p', { class: 'small muted', text: 'マニュアルにあるものは確認したうえで、それでも分からない点を質問しましょう。' })));
+
+  if (!S.progress || S.progress.name !== S.trainee) {
+    loadProgress(S.trainee);
+    append(wrap, h('div', { class: 'loading', text: '進捗を読み込み中…' }));
+    return wrap;
+  }
+  var state = {};
+  S.progress.rows.forEach(function (r) { state[r.id] = r; });
+  var all = S.progress.rows;
+  var doneCount = all.filter(function (r) { return r.done; }).length;
+  var pct = all.length ? Math.round(doneCount * 100 / all.length) : 0;
+  var required = S.data.materials.filter(function (m) { return m.group === 'eラーニング' && m.required; });
+  var watchedReq = required.filter(function (m) { return S.progress.watched.indexOf(m.id) >= 0; }).length;
+  var editable = canEdit();
+
+  append(wrap, h('div', { class: 'card' },
+    h('div', { class: 'row' }, h('div', null, h('div', { class: 'small muted', text: S.trainee + ' さんの卒業までの進捗' }), h('div', { class: 'big', text: pct + '%' })),
+      h('div', { class: 'spacer' }), h('span', { class: 'badge', text: doneCount + ' / ' + all.length + ' 完了' })),
+    h('div', { class: 'bar' }, h('div', { style: 'width:' + pct + '%' })),
+    editable ? null : h('p', { class: 'small muted', text: '他の研修生の進捗は見るだけです。' })));
+
+  var goalBox = h('div', { class: 'card' }, h('h2', { text: '🏁 ルームアドバイザー卒業条件' }));
+  S.data.goals.forEach(function (g) {
+    var extra = g.id === 'G02' ? h('span', { class: 'badge ' + (watchedReq === required.length && required.length ? 'ok' : ''), text: '必須動画 ' + watchedReq + ' / ' + required.length }) : null;
+    append(goalBox, checkRow(g.id, g.title, g.detail, extra, state[g.id], editable));
+  });
+  append(wrap, goalBox);
+
+  var phases = [];
+  S.data.tasks.forEach(function (t) {
+    var p = phases[phases.length - 1];
+    if (!p || p.name !== t.phase) phases.push(p = { name: t.phase, tasks: [] });
+    p.tasks.push(t);
+  });
+  var currentIdx = phases.findIndex(function (p) { return p.tasks.some(function (t) { return !(state[t.id] && state[t.id].done); }); });
+  append(wrap, h('h2', { style: 'font-size:1rem;margin:20px 4px 10px', text: '研修フロー' }));
+  phases.forEach(function (p, i) {
+    var d = p.tasks.filter(function (t) { return state[t.id] && state[t.id].done; }).length;
+    var det = h('details', { class: 'phase' + (i === currentIdx ? ' current' : ''), open: i === currentIdx },
+      h('summary', null, h('strong', { style: 'flex:1', text: p.name }),
+        i === currentIdx ? h('span', { class: 'badge req', text: 'いまここ' }) : null,
+        h('span', { class: 'badge' + (d === p.tasks.length ? ' ok' : ''), text: d + '/' + p.tasks.length })),
+      h('div', { class: 'body' }, p.tasks.map(function (t) {
+        return checkRow(t.id, t.title, t.point, t.category ? h('span', { class: 'badge', text: t.category }) : null, state[t.id], editable);
+      })));
+    append(wrap, det);
+  });
+  return wrap;
+}
+
+function checkRow(id, title, detail, extra, st, editable) {
+  var done = !!(st && st.done);
+  var meta = done && st.by ? '✓ ' + st.by + '　' + st.at : '';
+  var cb = h('input', { type: 'checkbox', disabled: !editable || !st, 'aria-label': title });
+  cb.checked = done;
+  var row = h('label', { class: 'check' + (done ? ' done' : '') }, cb,
+    h('div', { class: 't' }, h('div', null, title, ' ', extra), detail ? h('div', { class: 'small muted', text: detail }) : null,
+      meta ? h('div', { class: 'small', style: 'color:var(--ok)', text: meta }) : null));
+  cb.addEventListener('change', function () {
+    var want = cb.checked;
+    cb.disabled = true;
+    call('api_setCheck', S.trainee, id, want).then(function (r) {
+      var target = S.progress.rows.filter(function (x) { return x.id === r.id; })[0];
+      if (target) { target.done = r.done; target.by = r.by; target.at = r.at; }
+      var sum = S.data.summaries.filter(function (s) { return s.name === S.trainee; })[0];
+      if (sum) sum.stale = true;
+      render();
+    }).catch(function (e) { cb.checked = !want; cb.disabled = false; toast(errMsg(e), true); });
+  });
+  return row;
+}
+
+// ---------- みんなの進捗 ----------
+function viewAll() {
+  var wrap = h('div');
+  var refresh = h('button', { class: 'btn sub', text: '最新にする', onclick: function () {
+    refresh.disabled = true;
+    call('api_bootstrap').then(function (d) { S.data = d; render(); }).catch(function (e) { toast(errMsg(e), true); refresh.disabled = false; });
+  } });
+  var list = S.data.summaries.slice().sort(function (a, b) { return b.percent - a.percent; });
+  var card = h('div', { class: 'card' }, h('div', { class: 'row' }, h('h2', { style: 'margin:0', text: '👥 みんなの進捗' }), h('div', { class: 'spacer' }), refresh));
+  if (!list.length) { append(card, h('p', { class: 'empty', text: '研修生がまだいません' })); append(wrap, card); return wrap; }
+  var table = h('table', { class: 'sum' },
+    h('tr', null, h('th', { text: '名前' }), h('th', { text: 'いまのフェーズ' }), h('th', { text: '進捗' }),
+      h('th', { class: 'hide-sm', text: '卒業条件' }), h('th', { class: 'hide-sm', text: '必須動画' }), h('th', { class: 'hide-sm', text: '最終更新' })));
+  list.forEach(function (s) {
+    append(table, h('tr', { class: 'click', onclick: function () { S.trainee = s.name; S.progress = null; go('home'); } },
+      h('td', null, h('strong', { text: s.name }), s.joined ? h('div', { class: 'small muted', text: '入社 ' + s.joined }) : null),
+      h('td', { class: 'small', text: s.phase }),
+      h('td', { style: 'min-width:90px' }, h('div', { class: 'small', text: s.percent + '%' }), h('div', { class: 'bar' }, h('div', { style: 'width:' + s.percent + '%' }))),
+      h('td', { class: 'hide-sm', text: s.goalsDone + ' / ' + s.goalsTotal }),
+      h('td', { class: 'hide-sm', text: s.videosWatched + ' / ' + s.videosRequired }),
+      h('td', { class: 'hide-sm small', text: s.lastUpdate || '—' })));
+  });
+  append(card, table);
+  append(wrap, card);
+  return wrap;
+}
+
+// ---------- eラーニング ----------
+function viewElearning() {
+  var wrap = h('div');
+  if (!S.notes) {
+    call('api_myElearningNotes').then(function (n) { S.notes = n; if (S.tab === 'elearning') render(); }).catch(function (e) { toast(errMsg(e), true); });
+  }
+  var watched = (S.notes || []).map(function (n) { return n.id; });
+  var videos = S.data.materials.filter(function (m) { return m.group === 'eラーニング'; });
+  var sections = [];
+  videos.forEach(function (v) {
+    var s = sections[sections.length - 1];
+    if (!s || s.name !== v.section) sections.push(s = { name: v.section, items: [] });
+    s.items.push(v);
+  });
+  var req = videos.filter(function (v) { return v.required; });
+  var reqDone = req.filter(function (v) { return watched.indexOf(v.id) >= 0; }).length;
+  append(wrap, h('div', { class: 'card' },
+    h('div', { class: 'row' }, h('h2', { style: 'margin:0', text: '🎬 eラーニング' }), h('div', { class: 'spacer' }),
+      h('span', { class: 'badge ' + (reqDone === req.length && req.length ? 'ok' : ''), text: '必須 ' + reqDone + ' / ' + req.length })),
+    h('p', { class: 'small muted', text: '★①〜⑥が卒業に必須です。1.5〜2倍速での視聴がおすすめ。見終わったら動画の下で気づき・学びを入力すると「視聴済み」になります。一度見た後、実務を経験してからもう一度見ると理解が深まります。' })));
+  if (!videos.length) append(wrap, h('p', { class: 'empty', text: '動画がまだ登録されていません' }));
+  sections.forEach(function (s) {
+    var d = s.items.filter(function (v) { return watched.indexOf(v.id) >= 0; }).length;
+    var required = s.items.some(function (v) { return v.required; });
+    append(wrap, h('details', { class: 'phase', open: required && d < s.items.length },
+      h('summary', null, h('strong', { style: 'flex:1', text: s.name }), required ? h('span', { class: 'badge req', text: '必須' }) : h('span', { class: 'badge', text: '任意' }),
+        h('span', { class: 'badge' + (d === s.items.length ? ' ok' : ''), text: d + '/' + s.items.length })),
+      h('div', { class: 'body' }, s.items.map(function (v) {
+        var w = watched.indexOf(v.id) >= 0;
+        return h('button', { class: 'list-item', onclick: function () { openVideo(v); } },
+          h('span', { class: w ? 'watched' : 'muted', text: w ? '✓' : '▶' }),
+          h('div', { class: 't' }, h('div', { text: v.title }), v.note ? h('div', { class: 'small', style: 'color:var(--warn)', text: '⚠ 補足あり' }) : null));
+      }))));
+  });
+  return wrap;
+}
+function openVideo(v) {
+  var id = youtubeId(v.url);
+  var insight = h('textarea', { placeholder: '動画で得た気づき・学び（必須）' });
+  var question = h('textarea', { placeholder: '不明点や、先輩に質問したいこと（なければ空欄）' });
+  var btn = h('button', { class: 'btn', text: '送信して視聴済みにする' });
+  var past = (S.notes || []).filter(function (n) { return n.id === v.id; });
+  var close = openModal(v.title, [
+    id ? h('div', { class: 'video' }, h('iframe', { src: 'https://www.youtube.com/embed/' + id + '?rel=0', allow: 'autoplay; encrypted-media; picture-in-picture', allowfullscreen: true, title: v.title })) : null,
+    v.note ? h('div', { class: 'note', text: '⚠ 補足：' + v.note }) : null,
+    h('p', { class: 'small muted', text: v.section }),
+    past.length ? h('div', { class: 'card', style: 'background:var(--soft)' }, h('strong', { class: 'small', text: '前回の記録（' + past[0].at + '）' }), h('p', { class: 'small', text: past[0].insight })) : null,
+    h('label', { class: 'field' }, '気づき・学び', insight),
+    h('label', { class: 'field' }, '質問（後日の面談で使います）', question),
+    btn
+  ], v.url);
+  btn.addEventListener('click', function () {
+    btn.disabled = true;
+    call('api_submitElearning', v.id, insight.value, question.value).then(function () {
+      S.notes = (S.notes || []);
+      S.notes.unshift({ id: v.id, title: v.title, insight: insight.value, question: question.value, at: 'たった今' });
+      if (S.progress && S.progress.name === S.data.me.name && S.progress.watched.indexOf(v.id) < 0) S.progress.watched.push(v.id);
+      toast('記録しました');
+      close();
+      render();
+    }).catch(function (e) { btn.disabled = false; toast(errMsg(e), true); });
+  });
+}
+
+// ---------- マニュアル ----------
+function viewManuals() {
+  var wrap = h('div');
+  var input = h('input', { type: 'search', placeholder: 'マニュアルを検索…', value: S.filter });
+  var listBox = h('div');
+  var draw = function () {
+    listBox.innerHTML = '';
+    var q = input.value.trim().toLowerCase();
+    S.filter = input.value;
+    var items = S.data.materials.filter(function (m) { return m.group === 'マニュアル' && (!q || m.title.toLowerCase().indexOf(q) >= 0); });
+    if (!items.length) { append(listBox, h('p', { class: 'empty', text: '該当するマニュアルがありません' })); return; }
+    items.forEach(function (m) {
+      append(listBox, h('button', { class: 'list-item', onclick: function () { openDoc(m); } },
+        h('span', { text: m.kind === 'スプレッド' ? '📊' : '📄' }),
+        h('div', { class: 't' }, h('div', { text: m.title }), h('div', { class: 'small muted', text: m.kind }))));
+    });
+  };
+  input.addEventListener('input', draw);
+  draw();
+  append(wrap, h('div', { class: 'card' }, h('h2', { text: '📘 マニュアル' }), input), h('div', { class: 'card' }, listBox));
+  return wrap;
+}
+function openDoc(m) {
+  openModal(m.title, h('div', { class: 'docwrap' }, h('iframe', { class: 'docframe', src: previewUrl(m.url), title: m.title })), m.url);
+}
+
+// ---------- ロープレ ----------
+function viewRoleplay() {
+  var wrap = h('div');
+  if (!S.roleplays) {
+    call('api_listRoleplays').then(function (r) { S.roleplays = r; if (S.tab === 'roleplay') render(); }).catch(function (e) { toast(errMsg(e), true); });
+  }
+  var people = S.data.members.map(function (m) { return m.name; });
+  var opt = function (sel) { return [h('option', { value: '', text: '選択してください' })].concat(people.map(function (n) { var o = h('option', { value: n, text: n }); if (n === sel) o.selected = true; return o; })); };
+  var today = new Date();
+  var f = {
+    date: h('input', { type: 'date', value: today.getFullYear() + '-' + ('0' + (today.getMonth() + 1)).slice(-2) + '-' + ('0' + today.getDate()).slice(-2) }),
+    minutes: h('input', { type: 'number', min: '1', placeholder: '30' }),
+    speaker: h('select', null, opt(S.data.me.role === '研修生' ? S.data.me.name : '')),
+    listener: h('select', null, opt(S.data.me.role !== '研修生' ? S.data.me.name : '')),
+    topic: h('input', { list: 'rp-topics', placeholder: '例：【試験①】カウンセリング面談' }),
+    focus: h('textarea', { placeholder: '現在の課題・意識するポイント' }),
+    feedback: h('textarea', { placeholder: '聞き手からのフィードバック' }),
+    file: h('input', { type: 'file', accept: 'audio/*,video/*' })
+  };
+  var status = h('span', { class: 'small muted' });
+  var btn = h('button', { class: 'btn', text: '記録する' });
+  btn.addEventListener('click', function () {
+    var rec = { date: f.date.value.replace(/-/g, '/'), minutes: f.minutes.value, speaker: f.speaker.value, listener: f.listener.value,
+      topic: f.topic.value.trim(), focus: f.focus.value, feedback: f.feedback.value };
+    if (!rec.speaker || !rec.topic) { toast('話し手と内容を入力してください', true); return; }
+    var file = f.file.files[0];
+    if (file && file.size > 40 * 1024 * 1024) { toast('録音は40MBまでです。長い場合はドライブの「ロープレ録音」フォルダに直接入れてください。', true); return; }
+    btn.disabled = true;
+    status.textContent = file ? '録音をアップロード中…（少し時間がかかります）' : '保存中…';
+    readFile(file).then(function (payload) { return call('api_addRoleplay', rec, payload); }).then(function () {
+      toast('ロープレを記録しました');
+      S.roleplays = null;
+      render();
+    }).catch(function (e) { btn.disabled = false; status.textContent = ''; toast(errMsg(e), true); });
+  });
+  append(wrap, h('details', { class: 'card' },
+    h('summary', null, h('strong', { text: '＋ ロープレを記録する' })),
+    h('div', { style: 'margin-top:12px' },
+      h('div', { class: 'grid2' }, h('label', { class: 'field' }, '日付', f.date), h('label', { class: 'field' }, '所要時間（分）', f.minutes),
+        h('label', { class: 'field' }, '話し手', f.speaker), h('label', { class: 'field' }, '聞き手', f.listener)),
+      h('label', { class: 'field' }, '内容', f.topic,
+        h('datalist', { id: 'rp-topics' }, ROLEPLAY_TOPICS.map(function (t) { return h('option', { value: t }); }))),
+      h('label', { class: 'field' }, '意識するポイント', f.focus),
+      h('label', { class: 'field' }, 'フィードバック', f.feedback),
+      h('label', { class: 'field' }, '録音・録画（任意・40MBまで）', f.file,
+        h('div', { class: 'small', text: 'スマホのボイスメモやMeetの録画ファイルを選べます。文字起こしとAIフィードバックは第2弾で追加予定です。' })),
+      h('div', { class: 'row' }, btn, status))));
+
+  var filter = h('select', { onchange: function () { S.rpFilter = this.value; render(); } },
+    [h('option', { value: '', text: '全員' })].concat(people.map(function (n) { var o = h('option', { value: n, text: n }); if (n === S.rpFilter) o.selected = true; return o; })));
+  var listCard = h('div', { class: 'card' }, h('div', { class: 'row' }, h('h2', { style: 'margin:0', text: '🎙 ロープレ記録' }), h('div', { class: 'spacer' }), h('div', { style: 'width:140px' }, filter)));
+  if (!S.roleplays) append(listCard, h('p', { class: 'loading', text: '読み込み中…' }));
+  else {
+    var rows = S.roleplays.filter(function (r) { return !S.rpFilter || r.speaker === S.rpFilter || r.listener === S.rpFilter; });
+    if (!rows.length) append(listCard, h('p', { class: 'empty', text: 'まだ記録がありません' }));
+    rows.forEach(function (r) {
+      append(listCard, h('div', { class: 'check', style: 'display:block' },
+        h('div', { class: 'row' }, h('strong', { text: r.topic }), h('div', { class: 'spacer' }), h('span', { class: 'small muted', text: r.date + (r.minutes ? '・' + r.minutes + '分' : '') })),
+        h('div', { class: 'small muted', text: '話し手：' + r.speaker + (r.listener ? '　聞き手：' + r.listener : '') }),
+        r.focus ? h('div', { class: 'small', text: '意識：' + r.focus }) : null,
+        r.feedback ? h('div', { class: 'small', style: 'white-space:pre-wrap', text: 'FB：' + r.feedback }) : null,
+        r.audio ? h('a', { class: 'small', href: r.audio, target: '_blank', rel: 'noopener', text: '🎧 録音を開く' }) : null));
+    });
+  }
+  append(wrap, listCard);
+  return wrap;
+}
+function readFile(file) {
+  if (!file) return Promise.resolve(null);
+  return new Promise(function (resolve, reject) {
+    var r = new FileReader();
+    r.onload = function () { resolve({ name: file.name, mimeType: file.type, base64: String(r.result).split(',')[1] }); };
+    r.onerror = function () { reject(new Error('ファイルを読み込めませんでした')); };
+    r.readAsDataURL(file);
+  });
+}
+
+// ---------- 管理 ----------
+function viewAdmin() {
+  var wrap = h('div');
+  var links = h('div', { class: 'small muted', text: '読み込み中…' });
+  call('api_adminLinks').then(function (l) {
+    links.innerHTML = '';
+    append(links, h('div', { class: 'row' },
+      h('a', { class: 'btn sub', href: l.spreadsheet, target: '_blank', rel: 'noopener', text: '📊 データのスプレッドシート' }),
+      h('a', { class: 'btn sub', href: l.manuals, target: '_blank', rel: 'noopener', text: '📘 マニュアルのフォルダ' }),
+      h('a', { class: 'btn sub', href: l.recordings, target: '_blank', rel: 'noopener', text: '🎙 録音のフォルダ' })));
+  }).catch(function (e) { links.textContent = errMsg(e); });
+  append(wrap, h('div', { class: 'card' }, h('h2', { text: '⚙ 管理' }),
+    h('p', { class: 'small muted', text: '動画・マニュアルの追加や修正、卒業条件・タスクの変更は、データのスプレッドシート（資料マスター・卒業条件・タスクマスター）を直接編集します。' }), links));
+
+  if (S.data.me.role === '管理者') {
+    var f = { name: h('input', { placeholder: '例：山田太郎' }), email: h('input', { type: 'email', placeholder: 'name@monochro-inc.com' }),
+      role: h('select', null, ['研修生', '教育担当', '管理者'].map(function (r) { return h('option', { value: r, text: r }); })), joined: h('input', { type: 'date' }) };
+    var btn = h('button', { class: 'btn', text: '追加する' });
+    btn.addEventListener('click', function () {
+      btn.disabled = true;
+      call('api_addMember', { name: f.name.value, email: f.email.value, role: f.role.value, joined: f.joined.value.replace(/-/g, '/') }).then(function (r) {
+        toast(r.name + ' さんを追加しました');
+        return call('api_bootstrap');
+      }).then(function (d) { S.data = d; render(); }).catch(function (e) { btn.disabled = false; toast(errMsg(e), true); });
+    });
+    append(wrap, h('div', { class: 'card' }, h('h2', { text: '＋ メンバーを追加' }),
+      h('div', { class: 'grid2' }, h('label', { class: 'field' }, '名前', f.name), h('label', { class: 'field' }, 'メール（会社のGoogleアカウント）', f.email),
+        h('label', { class: 'field' }, '役割', f.role), h('label', { class: 'field' }, '入社日', f.joined)),
+      h('p', { class: 'small muted', text: '研修生を追加すると、その人の進捗シートが自動で作られます。' }), btn));
+  }
+  append(wrap, h('div', { class: 'card' }, h('h2', { text: 'メンバー' }),
+    S.data.members.map(function (m) {
+      return h('div', { class: 'check' }, h('div', { class: 't' }, h('strong', { text: m.name }), ' ', h('span', { class: 'badge', text: m.role }),
+        m.status !== '在籍' ? h('span', { class: 'badge warn', text: m.status }) : null));
+    })));
+  return wrap;
+}
+
+boot();
+</script>
+</body>
+</html>
