@@ -95,6 +95,16 @@ const list = run('api_listRoleplays()');
 assert.strictEqual(list.length, 1);
 assert.strictEqual(list[0].topic, '【試験①】カウンセリング面談');
 
+// やる気の指標：タスク1件(10) + 動画1本(5) + ロープレ1回(20)
+const st = run(`api_getProgress('小田天誠')`).stats;
+assert.deepStrictEqual(st, { points: 35, streak: 1, week: 3, videos: 1, roleplays: 1 });
+assert.strictEqual(run('api_bootstrap()').summaries[0].stats.points, 35);
+
+// マニュアルのウェブ表示
+const man = run(`api_getManual('MAN-01')`);
+assert.ok(man.html.includes('本文'));
+assert.strictEqual(man.canEdit, false);
+
 // メンバー表にいない人は使えない
 as('stranger@example.com');
 assert.throws(() => run('api_bootstrap()'), /権限がありません/);

@@ -4,119 +4,324 @@
 <base target="_top">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #f4f4f2; --card: #fff; --text: #1a1a1a; --muted: #6b6b6b; --line: #e3e3e0;
-    --accent: #111; --accent-text: #fff; --soft: #f0f0ec; --ok: #1f7a4d; --ok-soft: #e3f3ea;
-    --warn: #9a5b00; --warn-soft: #fff4dd; --danger: #b42318;
+    --ink: #0d0d0d; --ink2: #2b2b2b; --paper: #f6f5f1; --card: #ffffff; --line: #e4e2dc; --mute: #77756f;
+    --g1: #2a2a2a; --g2: #454545; --g3: #6b6b6b; --g4: #8f8f8f; --g5: #b8b8b8; --g6: #dcdcdc;
+    --en: "Montserrat", "Zen Kaku Gothic New", sans-serif;
+    --jp: "Zen Kaku Gothic New", -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif; padding-bottom: 76px; }
-  header { background: var(--accent); color: var(--accent-text); padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-  header h1 { margin: 0; font-size: 1.05rem; letter-spacing: .06em; }
-  header .me { font-size: .8rem; opacity: .8; text-align: right; }
-  main { max-width: 860px; margin: 0 auto; padding: 16px; }
-  nav.tabs { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card); border-top: 1px solid var(--line); display: flex; z-index: 10; }
-  nav.tabs button { flex: 1; border: 0; background: none; padding: 8px 2px 10px; font: inherit; font-size: .7rem; color: var(--muted); cursor: pointer; }
-  nav.tabs button span { display: block; font-size: 1.2rem; line-height: 1.3; }
-  nav.tabs button.active { color: var(--text); font-weight: 700; }
-  @media (min-width: 760px) {
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.7 var(--jp); padding-bottom: 84px; }
+  body.reading { overflow: hidden; }
+  a { color: inherit; }
+  .en { font-family: var(--en); letter-spacing: .08em; }
+  .dots { background-image: radial-gradient(rgba(255,255,255,.12) 1px, transparent 1.2px); background-size: 9px 9px; }
+
+  /* ヘッダーとタブ */
+  header.top { background: var(--ink); color: #fff; padding: 12px 16px; display: flex; align-items: center; gap: 10px; }
+  .logo { display: flex; align-items: center; gap: 9px; }
+  .logo b { font: 800 1rem/1 var(--en); letter-spacing: .22em; }
+  .logo small { display: block; font: 500 .58rem/1.4 var(--en); letter-spacing: .32em; opacity: .6; }
+  .chip { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: .78rem; border: 1px solid rgba(255,255,255,.25); border-radius: 99px; padding: 4px 12px 4px 5px; }
+  .chip .dot { width: 22px; height: 22px; border-radius: 50%; border: 1px solid rgba(255,255,255,.5); }
+  .chip .pt { font: 700 .78rem var(--en); }
+  nav.tabs { position: fixed; bottom: 0; left: 0; right: 0; z-index: 10; background: rgba(255,255,255,.96); backdrop-filter: blur(8px); border-top: 1px solid var(--line); display: flex; padding-bottom: env(safe-area-inset-bottom); }
+  nav.tabs button { flex: 1; border: 0; background: none; padding: 9px 2px 10px; font: 500 .66rem var(--jp); color: var(--mute); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  nav.tabs svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.6; }
+  nav.tabs button.active { color: var(--ink); font-weight: 700; }
+  nav.tabs button.active svg { stroke-width: 2.2; }
+  @media (min-width: 820px) {
     body { padding-bottom: 0; }
-    nav.tabs { position: sticky; top: 0; bottom: auto; border-top: 0; border-bottom: 1px solid var(--line); }
-    nav.tabs button { font-size: .85rem; padding: 10px 4px; }
-    nav.tabs button span { display: inline; font-size: 1rem; margin-right: 4px; }
+    nav.tabs { position: sticky; top: 0; bottom: auto; border-top: 0; border-bottom: 1px solid var(--line); justify-content: center; }
+    nav.tabs button { flex: 0 0 auto; flex-direction: row; font-size: .85rem; padding: 13px 18px; gap: 7px; border-bottom: 2px solid transparent; }
+    nav.tabs button.active { border-bottom-color: var(--ink); }
+    nav.tabs svg { width: 18px; height: 18px; }
   }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; }
-  .card h2 { margin: 0 0 8px; font-size: 1rem; }
-  .muted { color: var(--muted); }
-  .small { font-size: .8rem; }
-  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  main { max-width: 920px; margin: 0 auto; padding: 18px 16px 28px; }
+
+  /* 共通パーツ */
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 18px; margin-bottom: 16px; }
+  .card.ink { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .eyebrow { font: 700 .66rem/1 var(--en); letter-spacing: .28em; color: var(--mute); text-transform: uppercase; }
+  .ink .eyebrow { color: rgba(255,255,255,.55); }
+  h2.title { font-size: 1.15rem; margin: 6px 0 14px; letter-spacing: .02em; }
+  .section-head { display: flex; align-items: flex-end; gap: 10px; margin: 28px 2px 12px; }
+  .section-head h2 { margin: 0; font-size: 1.05rem; }
+  .section-head .en { font-size: .64rem; color: var(--mute); }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
   .spacer { flex: 1; }
-  .badge { display: inline-block; font-size: .7rem; padding: 1px 8px; border-radius: 99px; background: var(--soft); color: var(--muted); white-space: nowrap; }
-  .badge.req { background: var(--accent); color: var(--accent-text); }
-  .badge.ok { background: var(--ok-soft); color: var(--ok); }
-  .badge.warn { background: var(--warn-soft); color: var(--warn); }
-  .bar { height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
-  .bar > div { height: 100%; background: var(--ok); transition: width .3s; }
-  .big { font-size: 1.6rem; font-weight: 700; }
-  select, input, textarea { font: inherit; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--text); width: 100%; }
-  textarea { min-height: 84px; resize: vertical; }
-  label.field { display: block; margin-bottom: 10px; font-size: .85rem; color: var(--muted); }
-  label.field > * { margin-top: 4px; }
-  .btn { display: inline-block; border: 0; border-radius: 99px; padding: 9px 18px; font: inherit; font-weight: 700; background: var(--accent); color: var(--accent-text); cursor: pointer; text-decoration: none; }
-  .btn.sub { background: var(--soft); color: var(--text); }
-  .btn:disabled { opacity: .5; cursor: wait; }
-  .check { display: flex; gap: 10px; align-items: flex-start; padding: 7px 0; border-top: 1px solid var(--line); }
+  .muted { color: var(--mute); }
+  .small { font-size: .8rem; }
+  .pill { display: inline-flex; align-items: center; gap: 4px; font: 700 .66rem/1 var(--en); letter-spacing: .08em; padding: 5px 9px; border-radius: 99px; border: 1px solid var(--line); color: var(--mute); white-space: nowrap; }
+  .pill.solid { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .pill.jp { font-family: var(--jp); letter-spacing: 0; font-weight: 700; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--ink); border-radius: 99px; padding: 9px 18px; font: 700 .85rem var(--jp); background: var(--ink); color: #fff; cursor: pointer; text-decoration: none; transition: transform .15s; }
+  .btn:active { transform: scale(.97); }
+  .btn.ghost { background: transparent; color: var(--ink); }
+  .ink .btn { background: #fff; color: var(--ink); border-color: #fff; }
+  .ink .btn.ghost { background: transparent; color: #fff; border-color: rgba(255,255,255,.5); }
+  .btn:disabled { opacity: .45; cursor: wait; }
+  .bar { height: 6px; border-radius: 99px; background: var(--line); overflow: hidden; }
+  .bar > i { display: block; height: 100%; background: var(--ink); border-radius: 99px; transition: width .6s cubic-bezier(.2,.8,.2,1); }
+  .ink .bar { background: rgba(255,255,255,.18); }
+  .ink .bar > i { background: #fff; }
+  select, input, textarea { font: inherit; padding: 11px 12px; border: 1px solid var(--line); border-radius: 12px; background: #fff; color: var(--ink); width: 100%; outline: none; }
+  select:focus, input:focus, textarea:focus { border-color: var(--ink); }
+  textarea { min-height: 90px; resize: vertical; }
+  label.field { display: block; margin-bottom: 12px; font-size: .78rem; font-weight: 700; }
+  label.field > * { margin-top: 5px; font-weight: 400; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+  .empty { text-align: center; color: var(--mute); padding: 28px 0 8px; }
+  .empty svg { width: 120px; display: block; margin: 0 auto 8px; }
+  .loading { text-align: center; color: var(--mute); padding: 70px 0; font: 700 .7rem var(--en); letter-spacing: .3em; }
+  .loading::before { content: ""; display: block; width: 26px; height: 26px; margin: 0 auto 14px; border: 2px solid var(--line); border-top-color: var(--ink); border-radius: 50%; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (max-width: 560px) { .grid2 { grid-template-columns: 1fr; } .hide-sm { display: none !important; } }
+
+  /* ヒーロー（黒から白へ） */
+  .hero { position: relative; overflow: hidden; padding: 22px 20px 18px; }
+  .hero .copy { font: 800 1.55rem/1.2 var(--jp); letter-spacing: .04em; margin: 8px 0 2px; }
+  .hero .stage-name { font: 800 .8rem var(--en); letter-spacing: .3em; }
+  .hero .pct { font: 800 3.4rem/1 var(--en); letter-spacing: -.02em; }
+  .hero .pct small { font-size: 1.1rem; margin-left: 2px; }
+  .hero svg.stairs { width: 100%; max-width: 420px; height: auto; display: block; margin: 8px 0 6px auto; }
+  .hero-grid { display: grid; grid-template-columns: 1fr 1.3fr; gap: 12px; align-items: end; }
+  @media (max-width: 560px) { .hero-grid { grid-template-columns: 1fr; } }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid rgba(255,255,255,.15); margin-top: 12px; padding-top: 12px; }
+  .stats div { text-align: center; }
+  .stats b { display: block; font: 800 1.35rem/1.1 var(--en); }
+  .stats span { font: 700 .58rem var(--en); letter-spacing: .22em; opacity: .55; }
+  .viewer-select { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .viewer-select select { flex: 1; }
+
+  /* 次のアクション */
+  .next { display: grid; gap: 10px; }
+  .next-item { display: flex; gap: 12px; align-items: center; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; }
+  .next-item .ico { width: 38px; height: 38px; border-radius: 50%; background: var(--ink); color: #fff; display: grid; place-items: center; flex: none; }
+  .next-item .ico svg { width: 18px; height: 18px; stroke: #fff; fill: none; stroke-width: 1.8; }
+  .next-item .t { flex: 1; min-width: 0; }
+  .next-item .t div:first-child { font-weight: 700; }
+
+  /* バッジ */
+  .badges { display: flex; gap: 12px; overflow-x: auto; padding: 4px 2px 10px; scrollbar-width: none; }
+  .badge { flex: none; width: 78px; text-align: center; font-size: .66rem; color: var(--mute); }
+  .badge svg { width: 62px; height: 70px; display: block; margin: 0 auto 4px; }
+  .badge.on { color: var(--ink); font-weight: 700; }
+  .badge.new svg { animation: pop .7s ease; }
+  @keyframes pop { 0% { transform: scale(.4); } 70% { transform: scale(1.15); } 100% { transform: scale(1); } }
+
+  /* チェックリスト */
+  .check { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; border-top: 1px solid var(--line); cursor: pointer; position: relative; }
   .check:first-child { border-top: 0; }
-  .check input { width: 20px; height: 20px; margin-top: 2px; flex: none; accent-color: var(--ok); }
-  .check .t { flex: 1; }
-  .check.done .t > div:first-child { color: var(--muted); text-decoration: line-through; }
-  details.phase { background: var(--card); border: 1px solid var(--line); border-radius: 12px; margin-bottom: 10px; }
-  details.phase > summary { list-style: none; cursor: pointer; padding: 12px 16px; display: flex; gap: 8px; align-items: center; }
-  details.phase > summary::-webkit-details-marker { display: none; }
-  details.phase > summary::before { content: "▸"; color: var(--muted); }
-  details.phase[open] > summary::before { content: "▾"; }
-  details.phase.current { border-color: var(--accent); }
-  details.phase .body { padding: 0 16px 10px; }
-  .list-item { display: flex; gap: 10px; align-items: center; width: 100%; text-align: left; background: none; border: 0; border-top: 1px solid var(--line); padding: 10px 0; font: inherit; color: inherit; cursor: pointer; }
-  .list-item:first-child { border-top: 0; }
-  .list-item .t { flex: 1; min-width: 0; }
-  .watched { color: var(--ok); font-weight: 700; }
-  table.sum { width: 100%; border-collapse: collapse; font-size: .85rem; }
-  table.sum th, table.sum td { text-align: left; padding: 8px 6px; border-top: 1px solid var(--line); vertical-align: middle; }
-  table.sum tr.click { cursor: pointer; }
-  table.sum tr.click:hover { background: var(--soft); }
-  .principles ol { margin: 6px 0 0; padding-left: 1.4em; }
-  .toast { position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%); background: #222; color: #fff; padding: 10px 16px; border-radius: 10px; font-size: .85rem; z-index: 30; max-width: 90vw; }
-  .toast.err { background: var(--danger); }
-  .modal { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 20; display: flex; align-items: center; justify-content: center; padding: 12px; }
-  .modal .panel { background: var(--card); border-radius: 12px; width: min(900px, 100%); max-height: 94vh; overflow: auto; }
-  .modal .head { display: flex; gap: 8px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--card); }
-  .modal .head strong { flex: 1; }
-  .modal .close { border: 0; background: none; font-size: 1.4rem; cursor: pointer; }
-  .modal .content { padding: 14px; }
-  .video { position: relative; padding-top: 56.25%; background: #000; border-radius: 8px; overflow: hidden; }
-  .video iframe, .docframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
-  .docwrap { position: relative; height: 75vh; }
-  .note { background: var(--warn-soft); color: var(--warn); border-radius: 8px; padding: 8px 10px; font-size: .85rem; margin: 10px 0; }
-  .empty { text-align: center; color: var(--muted); padding: 24px 0; }
-  .loading { text-align: center; color: var(--muted); padding: 60px 0; }
-  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
-  @media (max-width: 520px) { .grid2 { grid-template-columns: 1fr; } .hide-sm { display: none; } }
+  .check input { position: absolute; opacity: 0; pointer-events: none; }
+  .box { width: 24px; height: 24px; border: 1.6px solid var(--ink); border-radius: 7px; flex: none; margin-top: 1px; display: grid; place-items: center; transition: background .2s; }
+  .box svg { width: 14px; height: 14px; stroke: #fff; stroke-width: 3; fill: none; opacity: 0; transform: scale(.4); transition: all .25s cubic-bezier(.2,1.6,.4,1); }
+  .check input:checked + .box { background: var(--ink); }
+  .check input:checked + .box svg { opacity: 1; transform: none; }
+  .check input:disabled + .box { border-color: var(--g5); }
+  .check input:disabled:checked + .box { background: var(--g4); border-color: var(--g4); }
+  .check .num { font: 800 .7rem var(--en); color: var(--g5); width: 20px; margin-top: 4px; flex: none; }
+  .check .t { flex: 1; min-width: 0; }
+  .check .t .main { font-weight: 500; }
+  .check.done .t .main { color: var(--mute); text-decoration: line-through; text-decoration-thickness: 1px; }
+  .check .meta { font-size: .72rem; color: var(--mute); }
+  .float-pt { position: fixed; z-index: 40; font: 800 1rem var(--en); color: var(--ink); pointer-events: none; animation: floatup 1.1s ease-out forwards; }
+  @keyframes floatup { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-46px); } }
+
+  /* フェーズのタイムライン */
+  .timeline { position: relative; padding-left: 30px; }
+  .timeline::before { content: ""; position: absolute; left: 11px; top: 10px; bottom: 10px; width: 2px; background: var(--line); }
+  .phase { position: relative; margin-bottom: 12px; }
+  .phase .node { position: absolute; left: -30px; top: 15px; width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--g5); background: var(--paper); display: grid; place-items: center; font: 800 .62rem var(--en); color: var(--g4); }
+  .phase.done .node { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .phase.current .node { border-color: var(--ink); color: var(--ink); box-shadow: 0 0 0 5px rgba(13,13,13,.1); }
+  .phase details { background: var(--card); border: 1px solid var(--line); border-radius: 16px; }
+  .phase.current details { border-color: var(--ink); box-shadow: 0 6px 24px rgba(0,0,0,.07); }
+  .phase summary { list-style: none; cursor: pointer; padding: 14px 16px; display: flex; gap: 10px; align-items: center; }
+  .phase summary::-webkit-details-marker { display: none; }
+  .phase summary strong { flex: 1; }
+  .phase .body { padding: 0 16px 8px; }
+  .phase .mini { width: 54px; }
+
+  /* みんな */
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 99px; padding: 3px; background: #fff; }
+  .seg button { border: 0; background: none; border-radius: 99px; padding: 6px 12px; font: 700 .75rem var(--jp); color: var(--mute); cursor: pointer; }
+  .seg button.on { background: var(--ink); color: #fff; }
+  .leader { display: grid; grid-template-columns: 34px 46px 1fr auto; gap: 12px; align-items: center; padding: 14px 4px; border-top: 1px solid var(--line); cursor: pointer; }
+  .leader:first-child { border-top: 0; }
+  .leader .rank { font: 800 1.1rem var(--en); color: var(--g5); text-align: center; }
+  .leader.top .rank { color: var(--ink); }
+  .avatar { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; font: 700 .95rem var(--jp); border: 1.5px solid var(--ink); }
+  .leader .score { text-align: right; }
+  .leader .score b { font: 800 1.05rem var(--en); display: block; }
+  .leader .score span { font-size: .68rem; color: var(--mute); }
+  .mvp { display: flex; gap: 14px; align-items: center; }
+  .mvp .crown { font: 800 2.4rem/1 var(--en); }
+
+  /* eラーニング */
+  .sec-card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; margin-bottom: 12px; overflow: hidden; }
+  .sec-card > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 14px; padding: 14px 16px; }
+  .sec-card > summary::-webkit-details-marker { display: none; }
+  .sec-no { width: 46px; height: 46px; border-radius: 12px; background: var(--ink); color: #fff; display: grid; place-items: center; font: 800 1.1rem var(--en); flex: none; }
+  .sec-card.opt .sec-no { background: #fff; color: var(--ink); border: 1.5px solid var(--ink); }
+  .sec-card.complete .sec-no { background: repeating-linear-gradient(45deg, var(--ink) 0 4px, var(--g2) 4px 8px); }
+  .ring { width: 40px; height: 40px; flex: none; }
+  .vid { display: flex; gap: 12px; align-items: center; width: 100%; text-align: left; background: none; border: 0; border-top: 1px solid var(--line); padding: 10px 16px; font: inherit; color: inherit; cursor: pointer; }
+  .vid:hover { background: #faf9f6; }
+  .thumb { width: 104px; aspect-ratio: 16/9; border-radius: 9px; background: var(--g6) center/cover; flex: none; position: relative; filter: grayscale(1) contrast(1.05); transition: filter .3s; overflow: hidden; }
+  .vid:hover .thumb { filter: none; }
+  .thumb .done { position: absolute; inset: 0; background: rgba(13,13,13,.62); color: #fff; display: grid; place-items: center; font: 800 .62rem var(--en); letter-spacing: .2em; }
+  .vid .t { flex: 1; min-width: 0; }
+  .vid .t div:first-child { font-weight: 500; line-height: 1.5; }
+
+  /* マニュアル一覧 */
+  .man-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+  .man { text-align: left; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; font: inherit; color: inherit; cursor: pointer; display: flex; flex-direction: column; gap: 10px; min-height: 132px; transition: transform .2s, box-shadow .2s; }
+  .man:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(0,0,0,.08); }
+  .man svg { width: 34px; height: 34px; stroke: var(--ink); fill: none; stroke-width: 1.4; }
+  .man b { font-size: .92rem; line-height: 1.5; }
+  .man .k { margin-top: auto; }
+
+  /* マニュアルリーダー */
+  .reader { position: fixed; inset: 0; z-index: 25; background: var(--paper); overflow-y: auto; }
+  .reader .bar-top { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: rgba(13,13,13,.96); color: #fff; }
+  .reader .bar-top strong { flex: 1; font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .reader .bar-top button, .reader .bar-top a { border: 1px solid rgba(255,255,255,.35); background: none; color: #fff; border-radius: 99px; padding: 6px 12px; font: 700 .75rem var(--jp); cursor: pointer; text-decoration: none; white-space: nowrap; }
+  .reader .cover { background: var(--ink); color: #fff; padding: 34px 20px 30px; }
+  .reader .cover h1 { font-size: 1.7rem; line-height: 1.35; margin: 10px 0 12px; max-width: 760px; }
+  .reader .cover .wrap, .reader .layout { max-width: 1040px; margin: 0 auto; }
+  .reader .layout { display: grid; grid-template-columns: 230px 1fr; gap: 32px; padding: 26px 20px 80px; }
+  @media (max-width: 860px) { .reader .layout { grid-template-columns: 1fr; gap: 10px; } }
+  .toc { position: sticky; top: 64px; align-self: start; font-size: .82rem; }
+  .toc a { display: block; text-decoration: none; padding: 6px 0 6px 12px; border-left: 2px solid var(--line); color: var(--mute); line-height: 1.5; }
+  .toc a.l3 { padding-left: 24px; font-size: .76rem; }
+  .toc a.on, .toc a:hover { border-left-color: var(--ink); color: var(--ink); font-weight: 700; }
+  @media (max-width: 860px) {
+    .toc { position: static; display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; }
+    .toc a { flex: none; border: 1px solid var(--line); border-radius: 99px; padding: 5px 12px; background: #fff; }
+    .toc a.l3 { display: none; }
+  }
+  .doc { background: #fff; border: 1px solid var(--line); border-radius: 20px; padding: 28px clamp(18px, 4vw, 44px); font-size: 1rem; line-height: 1.95; min-width: 0; }
+  .doc h2 { font-size: 1.25rem; margin: 2.2em 0 .8em; padding: 0 0 .5em; border-bottom: 2px solid var(--ink); counter-increment: sec; display: flex; gap: 12px; align-items: baseline; scroll-margin-top: 70px; }
+  .doc { counter-reset: sec; }
+  .doc h2::before { content: counter(sec, decimal-leading-zero); font: 800 .85rem var(--en); background: var(--ink); color: #fff; padding: 3px 8px; border-radius: 6px; }
+  .doc h2:first-child { margin-top: 0; }
+  .doc h3 { font-size: 1.05rem; margin: 1.8em 0 .6em; padding-left: 12px; border-left: 4px solid var(--ink); scroll-margin-top: 70px; }
+  .doc h4 { font-size: .98rem; margin: 1.4em 0 .4em; }
+  .doc p { margin: .55em 0; }
+  .doc ul, .doc ol { padding-left: 1.3em; }
+  .doc li { margin: .3em 0; }
+  .doc li::marker { color: var(--g4); }
+  .doc b { background: linear-gradient(transparent 62%, #e6e3da 62%); }
+  .doc figure { margin: 1.4em 0; }
+  .doc img { max-width: 100%; height: auto; display: block; margin: 0 auto; border-radius: 12px; border: 1px solid var(--line); box-shadow: 0 6px 20px rgba(0,0,0,.06); }
+  .doc table { border-collapse: collapse; width: 100%; margin: 1em 0; font-size: .9rem; display: block; overflow-x: auto; }
+  .doc td { border: 1px solid var(--line); padding: 8px 10px; vertical-align: top; }
+  .doc a { text-decoration: underline; text-underline-offset: 3px; }
+  .doc .mvideo { margin: 1.4em 0; }
+  .doc .mvideo .video { border-radius: 14px; }
+  .doc-frame { width: 100%; height: 78vh; border: 1px solid var(--line); border-radius: 16px; background: #fff; }
+
+  /* ロープレ */
+  .rp { display: grid; grid-template-columns: 52px 1fr; gap: 14px; padding: 14px 0; border-top: 1px solid var(--line); }
+  .rp:first-child { border-top: 0; }
+  .rp .date { text-align: center; font-family: var(--en); line-height: 1.1; }
+  .rp .date b { display: block; font-size: 1.3rem; font-weight: 800; }
+  .rp .date span { font-size: .6rem; letter-spacing: .15em; color: var(--mute); }
+  .rp .fb { margin-top: 6px; padding: 10px 12px; background: var(--paper); border-radius: 10px; font-size: .86rem; white-space: pre-wrap; }
+
+  /* モーダル */
+  .modal { position: fixed; inset: 0; z-index: 30; background: rgba(13,13,13,.6); display: flex; align-items: center; justify-content: center; padding: 12px; animation: fade .2s; }
+  .modal .panel { background: #fff; border-radius: 20px; width: min(860px, 100%); max-height: 94vh; overflow: auto; animation: rise .25s cubic-bezier(.2,.8,.2,1); }
+  .modal .head { display: flex; gap: 8px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: #fff; z-index: 1; }
+  .modal .head strong { flex: 1; font-size: .95rem; }
+  .modal .close { border: 0; background: var(--paper); width: 32px; height: 32px; border-radius: 50%; font-size: 1.1rem; cursor: pointer; }
+  .modal .content { padding: 16px; }
+  @keyframes fade { from { opacity: 0; } }
+  @keyframes rise { from { transform: translateY(18px); opacity: 0; } }
+  .video { position: relative; padding-top: 56.25%; background: #000; border-radius: 12px; overflow: hidden; }
+  .video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+  .note { border: 1px dashed var(--g4); border-radius: 12px; padding: 10px 12px; font-size: .84rem; margin: 12px 0; }
+  .note b { font: 800 .62rem var(--en); letter-spacing: .2em; display: block; color: var(--mute); }
+
+  /* お祝い・トースト */
+  .celebrate { position: fixed; inset: 0; z-index: 50; background: var(--ink); color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px; animation: fade .3s; cursor: pointer; }
+  .celebrate canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .celebrate .big { font: 800 clamp(2.2rem, 10vw, 4.4rem)/1 var(--en); letter-spacing: .08em; position: relative; animation: pop .7s ease; }
+  .celebrate .sub { position: relative; margin-top: 14px; font-size: 1rem; opacity: .85; }
+  .celebrate .tap { position: relative; margin-top: 30px; font: 700 .62rem var(--en); letter-spacing: .3em; opacity: .5; }
+  .toast { position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 11px 18px; border-radius: 99px; font-size: .85rem; z-index: 60; max-width: 92vw; box-shadow: 0 8px 28px rgba(0,0,0,.25); animation: rise .25s; }
+  .toast.err { background: #fff; color: var(--ink); border: 1.5px solid var(--ink); border-radius: 14px; }
+  .principles ol { margin: 8px 0 0; padding-left: 1.5em; }
+  .principles summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 10px; }
+  .principles summary::-webkit-details-marker { display: none; }
 </style>
 </head>
 <body>
-<header>
-  <h1>MONOCHRO 新人研修</h1>
-  <div class="me" id="me"></div>
+<header class="top">
+  <div class="logo">
+    <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="13.5" fill="#fff" stroke="#fff"/><path d="M15 1.5a13.5 13.5 0 0 0 0 27z" fill="#0d0d0d"/><circle cx="15" cy="15" r="13.5" fill="none" stroke="#fff"/></svg>
+    <div><b>MONOCHRO</b><small>TRAINING PROGRAM</small></div>
+  </div>
+  <div class="chip" id="me" hidden></div>
 </header>
 <nav class="tabs" id="tabs"></nav>
-<main id="view"><div class="loading">読み込み中…</div></main>
+<main id="view"><div class="loading">LOADING</div></main>
 <div id="modal-root"></div>
 
 <script>
 'use strict';
+var ICONS = {
+  home: '<path d="M3 20h18M5 20V11l7-6 7 6v9"/><path d="M10 20v-5h4v5"/>',
+  all: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c.6-3.6 3-5.6 6-5.6s5.4 2 6 5.6"/><circle cx="17" cy="9" r="2.5"/><path d="M16.5 14.6c2.6.2 4.1 2 4.5 5.4"/>',
+  elearning: '<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M10 8.5v5l4.3-2.5z"/><path d="M8 21h8"/>',
+  manuals: '<path d="M4 4.5h6a2 2 0 0 1 2 2V20a1.6 1.6 0 0 0-1.6-1.6H4z"/><path d="M20 4.5h-6a2 2 0 0 0-2 2V20a1.6 1.6 0 0 1 1.6-1.6H20z"/>',
+  roleplay: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/>',
+  admin: '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>',
+  check: '<path d="M4 12.5l5 5L20 6.5"/>',
+  play: '<path d="M8 5.5v13l10.5-6.5z"/>',
+  flag: '<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',
+  doc: '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/>',
+  sheet: '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 10h16M4 15h16M10 4v16"/>',
+  key: '<circle cx="8" cy="15" r="4"/><path d="M11 12l8-8M16 7l2 2M14 9l2 2"/>',
+  car: '<path d="M4 16v-4l2-5h12l2 5v4z"/><circle cx="8" cy="16.5" r="1.8"/><circle cx="16" cy="16.5" r="1.8"/>',
+  phone: '<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/>',
+  yen: '<path d="M6 4l6 8 6-8M12 12v8M8 13h8M8 16.5h8"/>',
+  search: '<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/>',
+  shield: '<path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/>',
+  building: '<path d="M4 21V4h10v17M14 9h6v12M7 8h4M7 12h4M7 16h4M17 13h1M17 17h1M3 21h18"/>'
+};
+function icon(name) { return '<svg viewBox="0 0 24 24" aria-hidden="true">' + (ICONS[name] || ICONS.doc) + '</svg>'; }
+
 var TABS = [
-  { id: 'home', icon: '🎓', label: '卒業フロー' },
-  { id: 'all', icon: '👥', label: 'みんな' },
-  { id: 'elearning', icon: '🎬', label: 'eラーニング' },
-  { id: 'manuals', icon: '📘', label: 'マニュアル' },
-  { id: 'roleplay', icon: '🎙', label: 'ロープレ' },
-  { id: 'admin', icon: '⚙', label: '管理', staff: true }
+  { id: 'home', label: '卒業フロー' }, { id: 'all', label: 'みんな' }, { id: 'elearning', label: 'eラーニング' },
+  { id: 'manuals', label: 'マニュアル' }, { id: 'roleplay', label: 'ロープレ' }, { id: 'admin', label: '管理', staff: true }
 ];
+// 黒から白へ。進捗率でステージが上がり、100%でルームアドバイザー（WHITE）
+var STAGES = [
+  { name: 'BLACK', min: 0, fill: '#0d0d0d' }, { name: 'ONYX', min: 15, fill: '#2a2a2a' },
+  { name: 'CHARCOAL', min: 30, fill: '#454545' }, { name: 'GRAPHITE', min: 45, fill: '#6b6b6b' },
+  { name: 'SLATE', min: 60, fill: '#8f8f8f' }, { name: 'SILVER', min: 75, fill: '#b8b8b8' },
+  { name: 'PEARL', min: 90, fill: '#dcdcdc' }, { name: 'WHITE', min: 100, fill: '#ffffff' }
+];
+var PT = { task: 10, goal: 50, video: 5, roleplay: 20 };
 var ROLEPLAY_TOPICS = ['【試験①】カウンセリング面談', '【試験②】ヒアリング物件提案', '【試験③】初期費用＆申込後の流れ',
   '【試験④】アウトトーク', '【試験⑤】（紹介）初回LINE～初回電話まで', '【試験⑥】バリュートーク', '【試験⑦】マイストーリー',
   'ヒアリング', '物件提案', 'カウンセリング面談', 'LINEロープレ', 'アポ', 'マイストーリー', '業界説明', 'コンセプトマップ',
   '初期費用の説明', '申込み後の流れ', 'クロージング', 'アウトトーク', '紹介依頼'];
 var PRINCIPLES = ['質問なき指導は行わない', '「どうすればいいですか？」は絶対NG', 'メモ無き同じ質問は絶対NG', '必ず自分で調べてから質問'];
 
-var S = { data: null, tab: 'home', trainee: null, progress: null, roleplays: null, notes: null, filter: '' };
+var S = { data: null, tab: 'home', trainee: null, progress: null, roleplays: null, notes: null, filter: '', sort: 'percent', seenBadges: null };
 
 // ---------- 共通 ----------
 function call(fn) {
   var args = Array.prototype.slice.call(arguments, 1);
   return new Promise(function (resolve, reject) {
-    var r = google.script.run.withSuccessHandler(resolve).withFailureHandler(function (e) { reject(e); });
+    var r = google.script.run.withSuccessHandler(resolve).withFailureHandler(reject);
     r[fn].apply(r, args);
   });
 }
@@ -127,6 +332,7 @@ function h(tag, attrs) {
     var v = attrs[k];
     if (v === null || v === undefined || v === false) return;
     if (k === 'text') el.textContent = v;
+    else if (k === 'html') el.innerHTML = v;
     else if (k === 'class') el.className = v;
     else if (k.indexOf('on') === 0) el.addEventListener(k.slice(2), v);
     else el.setAttribute(k, v === true ? '' : v);
@@ -142,54 +348,147 @@ function append(el) {
     el.appendChild(typeof c === 'string' || typeof c === 'number' ? document.createTextNode(String(c)) : c);
   }
 }
+function svg(markup, cls) { var d = h('span', { html: markup }); var s = d.firstChild; if (cls) s.setAttribute('class', cls); return s; }
 function toast(msg, isErr) {
   var t = h('div', { class: 'toast' + (isErr ? ' err' : ''), text: msg });
   document.body.appendChild(t);
-  setTimeout(function () { t.remove(); }, isErr ? 6000 : 2500);
+  setTimeout(function () { t.remove(); }, isErr ? 6000 : 2400);
 }
 function errMsg(e) { return (e && e.message) ? e.message : String(e); }
 function isStaff() { var r = S.data.me.role; return r === '管理者' || r === '教育担当'; }
 function trainees() { return S.data.members.filter(function (m) { return m.role === '研修生' && m.status !== '退職'; }); }
 function youtubeId(url) { var m = String(url).match(/(?:youtu\.be\/|v=|embed\/)([\w-]{11})/); return m && m[1]; }
-function previewUrl(url) {
-  return String(url).replace(/\/(edit|view)([?#].*)?$/, '/preview');
+function stageOf(pct) { var s = 0; STAGES.forEach(function (st, i) { if (pct >= st.min) s = i; }); return s; }
+function initials(name) { return String(name).replace(/\s/g, '').slice(0, 1); }
+function avatar(name, pct) {
+  var st = STAGES[stageOf(pct)];
+  var light = stageOf(pct) >= 4;
+  return h('div', { class: 'avatar', style: 'background:' + st.fill + ';color:' + (light ? '#0d0d0d' : '#fff'), text: initials(name) });
 }
+function ring(done, total) {
+  var r = 16, c = 2 * Math.PI * r, p = total ? done / total : 0;
+  return svg('<svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="' + r + '" fill="none" stroke="#e4e2dc" stroke-width="3.5"/>' +
+    '<circle cx="20" cy="20" r="' + r + '" fill="none" stroke="#0d0d0d" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="' + (c * p) + ' ' + c + '" transform="rotate(-90 20 20)"/>' +
+    '<text x="20" y="24" text-anchor="middle" font-family="Montserrat" font-weight="800" font-size="10">' + done + '</text></svg>', 'ring');
+}
+function closeModal() { document.getElementById('modal-root').innerHTML = ''; document.body.classList.remove('reading'); }
 function openModal(title, body, link) {
   var root = document.getElementById('modal-root');
-  var close = function () { root.innerHTML = ''; document.removeEventListener('keydown', onKey); };
-  var onKey = function (e) { if (e.key === 'Escape') close(); };
-  document.addEventListener('keydown', onKey);
   root.innerHTML = '';
-  root.appendChild(h('div', { class: 'modal', onclick: function (e) { if (e.target.classList.contains('modal')) close(); } },
+  root.appendChild(h('div', { class: 'modal', onclick: function (e) { if (e.target.classList.contains('modal')) closeModal(); } },
     h('div', { class: 'panel' },
       h('div', { class: 'head' }, h('strong', { text: title }),
-        link ? h('a', { href: link, target: '_blank', rel: 'noopener', class: 'small', text: '別タブで開く ↗' }) : null,
-        h('button', { class: 'close', 'aria-label': '閉じる', onclick: close, text: '×' })),
+        link ? h('a', { href: link, target: '_blank', rel: 'noopener', class: 'small', text: '別タブ ↗' }) : null,
+        h('button', { class: 'close', 'aria-label': '閉じる', onclick: closeModal, text: '×' })),
       h('div', { class: 'content' }, body))));
-  return close;
+}
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
+
+// ---------- イラスト ----------
+/** 黒から白への階段。今いる段に人が立ち、頂上に旗が立つ */
+function stairsSvg(stage) {
+  var W = 400, Hh = 190, n = STAGES.length, sw = W / n;
+  var parts = ['<svg class="stairs" viewBox="0 0 ' + W + ' ' + (Hh + 20) + '" aria-hidden="true">'];
+  STAGES.forEach(function (st, i) {
+    var hgt = 22 + i * 20, x = i * sw, y = Hh - hgt;
+    if (i <= stage) parts.push('<rect x="' + (x + 1) + '" y="' + y + '" width="' + (sw - 2) + '" height="' + hgt + '" rx="3" fill="' + st.fill + '" stroke="#fff" stroke-opacity=".55"/>');
+    else parts.push('<rect x="' + (x + 1.5) + '" y="' + y + '" width="' + (sw - 3) + '" height="' + hgt + '" rx="3" fill="none" stroke="#fff" stroke-opacity=".35" stroke-dasharray="3 4"/>');
+  });
+  var px = stage * sw + sw / 2, py = Hh - (22 + stage * 20);
+  // 頂上の旗
+  var fx = (n - 1) * sw + sw / 2, fy = Hh - (22 + (n - 1) * 20);
+  parts.push('<path d="M' + fx + ' ' + fy + 'v-34" stroke="#fff" stroke-width="2"/><path d="M' + fx + ' ' + (fy - 34) + 'h20l-5 6 5 6h-20z" fill="#fff"/>');
+  // 人（線画）
+  parts.push('<g stroke="#fff" stroke-width="2.4" stroke-linecap="round" fill="none" class="climber">' +
+    '<circle cx="' + px + '" cy="' + (py - 34) + '" r="5.5" fill="#0d0d0d"/>' +
+    '<path d="M' + px + ' ' + (py - 28) + 'v13M' + px + ' ' + (py - 15) + 'l-5 15M' + px + ' ' + (py - 15) + 'l6 15M' + px + ' ' + (py - 24) + 'l-7 5M' + px + ' ' + (py - 24) + 'l8 -6"/></g>');
+  parts.push('<text x="' + (fx - 12) + '" y="' + (fy - 42) + '" fill="#fff" font-family="Montserrat" font-weight="800" font-size="9" letter-spacing="1.5" text-anchor="middle">ROOM ADVISOR</text>');
+  parts.push('</svg>');
+  return svg(parts.join(''), 'stairs');
+}
+function emptyArt() {
+  return svg('<svg viewBox="0 0 120 80" fill="none" stroke="#0d0d0d" stroke-width="1.6" stroke-linecap="round"><path d="M10 72h100"/><path d="M28 72V38l22-18 22 18v34"/><path d="M44 72V54h12v18"/><rect x="34" y="42" width="8" height="8"/><path d="M80 72V50h22v22M86 56h4M94 56h4M86 63h4M94 63h4"/><circle cx="96" cy="22" r="8" fill="#0d0d0d"/></svg>');
+}
+function badgeSvg(glyph, on) {
+  var hex = 'M31 3l26 15v32L31 65 5 50V18z';
+  return svg('<svg viewBox="0 0 62 70">' +
+    (on ? '<path d="' + hex + '" fill="#0d0d0d"/><path d="M31 9l21 12v26L31 59 10 47V21z" fill="none" stroke="#fff" stroke-opacity=".35"/>'
+      : '<path d="' + hex + '" fill="none" stroke="#b8b8b8" stroke-width="1.5" stroke-dasharray="4 4"/>') +
+    '<text x="31" y="40" text-anchor="middle" font-family="Montserrat" font-weight="800" font-size="' + (glyph.length > 3 ? 11 : 14) + '" fill="' + (on ? '#fff' : '#b8b8b8') + '">' + glyph + '</text></svg>');
+}
+function manualIcon(title) {
+  var map = [[/保証|管理会社|法人|UR/, 'building'], [/社用車/, 'car'], [/電話|LINE|トーク/, 'phone'], [/見積|報酬|売上|明細/, 'yen'],
+    [/レインズ|リアプロ|イタンジ|物件出し/, 'search'], [/コンプライアンス|ルール|重説|チェック/, 'shield'], [/昇格|ルームアドバイザー/, 'flag']];
+  for (var i = 0; i < map.length; i++) if (map[i][0].test(title)) return map[i][1];
+  return 'doc';
 }
 
-// ---------- 起動 ----------
+// ---------- お祝い ----------
+function celebrate(big, sub) {
+  var el = h('div', { class: 'celebrate', onclick: function () { el.remove(); } });
+  var canvas = h('canvas');
+  append(el, canvas, h('div', { class: 'big', text: big }), h('div', { class: 'sub', text: sub }), h('div', { class: 'tap', text: 'TAP TO CONTINUE' }));
+  document.body.appendChild(el);
+  var ctx = canvas.getContext && canvas.getContext('2d');
+  if (!ctx) return;
+  var W = canvas.width = innerWidth, Hh = canvas.height = innerHeight;
+  var bits = [];
+  for (var i = 0; i < 140; i++) bits.push({ x: Math.random() * W, y: -20 - Math.random() * Hh, s: 4 + Math.random() * 8, v: 2 + Math.random() * 4, r: Math.random() * 6, w: Math.random() > .5, c: Math.random() > .3 ? '#fff' : '#8f8f8f' });
+  var t0 = Date.now();
+  (function frame() {
+    if (!el.isConnected) return;
+    ctx.clearRect(0, 0, W, Hh);
+    bits.forEach(function (b) {
+      b.y += b.v; b.r += .05; b.x += Math.sin(b.r) * .8;
+      ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.r); ctx.fillStyle = b.c;
+      if (b.w) ctx.fillRect(-b.s / 2, -b.s / 4, b.s, b.s / 2); else { ctx.beginPath(); ctx.arc(0, 0, b.s / 3, 0, 7); ctx.fill(); }
+      ctx.restore();
+    });
+    if (Date.now() - t0 < 4500) requestAnimationFrame(frame);
+  })();
+}
+function floatPoints(target, text) {
+  var r = target.getBoundingClientRect();
+  var f = h('div', { class: 'float-pt', text: text, style: 'left:' + (r.left + r.width / 2 - 14) + 'px;top:' + (r.top - 6) + 'px' });
+  document.body.appendChild(f);
+  setTimeout(function () { f.remove(); }, 1100);
+}
+
+// ---------- 起動とタブ ----------
 function boot() {
   call('api_bootstrap').then(function (d) {
     S.data = d;
-    document.getElementById('me').textContent = d.me.name + '（' + d.me.role + '）';
     if (d.me.role === '研修生') S.trainee = d.me.name;
     else S.trainee = (trainees()[0] || {}).name || null;
     var hash = location.hash.replace('#', '');
     if (TABS.some(function (t) { return t.id === hash; })) S.tab = hash;
+    renderChip();
     renderTabs();
     render();
   }).catch(function (e) {
-    document.getElementById('view').innerHTML = '';
-    append(document.getElementById('view'), h('div', { class: 'card' }, h('h2', { text: 'ひらけませんでした' }), h('p', { text: errMsg(e) })));
+    var v = document.getElementById('view');
+    v.innerHTML = '';
+    append(v, h('div', { class: 'card' }, emptyArt(), h('h2', { class: 'title', text: 'ひらけませんでした' }), h('p', { text: errMsg(e) })));
   });
+}
+function myStats() {
+  if (S.progress && S.progress.name === S.data.me.name) return { pct: progressPct(), points: S.progress.stats.points };
+  var s = S.data.summaries.filter(function (x) { return x.name === S.data.me.name; })[0];
+  return s ? { pct: s.percent, points: s.stats.points } : null;
+}
+function renderChip() {
+  var chip = document.getElementById('me');
+  chip.hidden = false;
+  chip.innerHTML = '';
+  var st = myStats();
+  append(chip, h('span', { class: 'dot', style: 'background:' + (st ? STAGES[stageOf(st.pct)].fill : '#fff') }),
+    h('span', { text: S.data.me.name }), st ? h('span', { class: 'pt', text: st.points + ' PT' }) : h('span', { class: 'pt', text: S.data.me.role }));
 }
 function renderTabs() {
   var nav = document.getElementById('tabs');
   nav.innerHTML = '';
   TABS.filter(function (t) { return !t.staff || isStaff(); }).forEach(function (t) {
-    nav.appendChild(h('button', { class: S.tab === t.id ? 'active' : '', onclick: function () { go(t.id); } }, h('span', { text: t.icon }), t.label));
+    nav.appendChild(h('button', { class: S.tab === t.id ? 'active' : '', onclick: function () { go(t.id); } }, svg(icon(t.id)), t.label));
   });
 }
 function go(tab) {
@@ -208,126 +507,240 @@ function render() {
 
 // ---------- 卒業フロー ----------
 function loadProgress(name) {
-  S.progress = null;
   if (S.loadingFor === name) return;
   S.loadingFor = name;
   call('api_getProgress', name).then(function (p) {
     S.loadingFor = null;
-    if (S.trainee === name) { S.progress = p; if (S.tab === 'home') render(); }
+    if (S.trainee === name) { S.progress = p; S.seenBadges = null; renderChip(); if (S.tab === 'home') render(); }
   }).catch(function (e) { S.loadingFor = null; toast(errMsg(e), true); });
 }
 function canEdit() { return isStaff() || S.data.me.name === S.trainee; }
-
-function viewHome() {
-  var wrap = h('div');
-  if (!S.trainee) {
-    append(wrap, h('div', { class: 'card' }, h('h2', { text: '研修生がまだいません' }), h('p', { class: 'muted', text: '「管理」タブから研修生を追加してください。' })));
-    return wrap;
-  }
-  if (isStaff() || S.data.me.name !== S.trainee) {
-    var sel = h('select', { onchange: function () { S.trainee = this.value; loadProgress(S.trainee); render(); } },
-      trainees().map(function (t) { var o = h('option', { value: t.name, text: t.name }); if (t.name === S.trainee) o.selected = true; return o; }));
-    append(wrap, h('div', { class: 'card row' }, h('span', { class: 'muted small', text: '表示中の研修生' }), h('div', { class: 'spacer' }, sel)));
-  }
-  append(wrap, h('details', { class: 'card principles' },
-    h('summary', null, h('strong', { text: '質問の4大原則' })),
-    h('ol', null, PRINCIPLES.map(function (p) { return h('li', { text: p }); })),
-    h('p', { class: 'small muted', text: 'マニュアルにあるものは確認したうえで、それでも分からない点を質問しましょう。' })));
-
-  if (!S.progress || S.progress.name !== S.trainee) {
-    loadProgress(S.trainee);
-    append(wrap, h('div', { class: 'loading', text: '進捗を読み込み中…' }));
-    return wrap;
-  }
-  var state = {};
-  S.progress.rows.forEach(function (r) { state[r.id] = r; });
+function stateMap() { var m = {}; S.progress.rows.forEach(function (r) { m[r.id] = r; }); return m; }
+function progressPct() {
   var all = S.progress.rows;
-  var doneCount = all.filter(function (r) { return r.done; }).length;
-  var pct = all.length ? Math.round(doneCount * 100 / all.length) : 0;
-  var required = S.data.materials.filter(function (m) { return m.group === 'eラーニング' && m.required; });
-  var watchedReq = required.filter(function (m) { return S.progress.watched.indexOf(m.id) >= 0; }).length;
-  var editable = canEdit();
-
-  append(wrap, h('div', { class: 'card' },
-    h('div', { class: 'row' }, h('div', null, h('div', { class: 'small muted', text: S.trainee + ' さんの卒業までの進捗' }), h('div', { class: 'big', text: pct + '%' })),
-      h('div', { class: 'spacer' }), h('span', { class: 'badge', text: doneCount + ' / ' + all.length + ' 完了' })),
-    h('div', { class: 'bar' }, h('div', { style: 'width:' + pct + '%' })),
-    editable ? null : h('p', { class: 'small muted', text: '他の研修生の進捗は見るだけです。' })));
-
-  var goalBox = h('div', { class: 'card' }, h('h2', { text: '🏁 ルームアドバイザー卒業条件' }));
-  S.data.goals.forEach(function (g) {
-    var extra = g.id === 'G02' ? h('span', { class: 'badge ' + (watchedReq === required.length && required.length ? 'ok' : ''), text: '必須動画 ' + watchedReq + ' / ' + required.length }) : null;
-    append(goalBox, checkRow(g.id, g.title, g.detail, extra, state[g.id], editable));
-  });
-  append(wrap, goalBox);
-
+  return all.length ? Math.round(all.filter(function (r) { return r.done; }).length * 100 / all.length) : 0;
+}
+function phasesOf() {
   var phases = [];
   S.data.tasks.forEach(function (t) {
     var p = phases[phases.length - 1];
     if (!p || p.name !== t.phase) phases.push(p = { name: t.phase, tasks: [] });
     p.tasks.push(t);
   });
-  var currentIdx = phases.findIndex(function (p) { return p.tasks.some(function (t) { return !(state[t.id] && state[t.id].done); }); });
-  append(wrap, h('h2', { style: 'font-size:1rem;margin:20px 4px 10px', text: '研修フロー' }));
-  phases.forEach(function (p, i) {
-    var d = p.tasks.filter(function (t) { return state[t.id] && state[t.id].done; }).length;
-    var det = h('details', { class: 'phase' + (i === currentIdx ? ' current' : ''), open: i === currentIdx },
-      h('summary', null, h('strong', { style: 'flex:1', text: p.name }),
-        i === currentIdx ? h('span', { class: 'badge req', text: 'いまここ' }) : null,
-        h('span', { class: 'badge' + (d === p.tasks.length ? ' ok' : ''), text: d + '/' + p.tasks.length })),
-      h('div', { class: 'body' }, p.tasks.map(function (t) {
-        return checkRow(t.id, t.title, t.point, t.category ? h('span', { class: 'badge', text: t.category }) : null, state[t.id], editable);
-      })));
-    append(wrap, det);
+  return phases;
+}
+function requiredVideos() { return S.data.materials.filter(function (m) { return m.group === 'eラーニング' && m.required; }); }
+function snapshot() {
+  var st = stateMap();
+  var phases = phasesOf();
+  var phasesDone = phases.filter(function (p) { return p.tasks.every(function (t) { return st[t.id] && st[t.id].done; }); }).length;
+  var tasksDone = S.progress.rows.filter(function (r) { return r.kind === 'タスク' && r.done; }).length;
+  var goalsDone = S.progress.rows.filter(function (r) { return r.kind === '卒業条件' && r.done; }).length;
+  var req = requiredVideos();
+  var reqDone = req.filter(function (m) { return S.progress.watched.indexOf(m.id) >= 0; }).length;
+  var pct = progressPct();
+  return { pct: pct, stage: stageOf(pct), phasesDone: phasesDone, tasksDone: tasksDone, goalsDone: goalsDone,
+    goalsTotal: S.data.goals.length, reqDone: reqDone, reqTotal: req.length, stats: S.progress.stats };
+}
+var BADGES = [
+  { g: '01', name: 'はじめの一歩', ok: function (s) { return s.tasksDone >= 1; } },
+  { g: '10', name: 'タスク10', ok: function (s) { return s.tasksDone >= 10; } },
+  { g: '30', name: 'タスク30', ok: function (s) { return s.tasksDone >= 30; } },
+  { g: 'PH', name: 'フェーズ制覇', ok: function (s) { return s.phasesDone >= 1; } },
+  { g: '1/2', name: '折り返し', ok: function (s) { return s.pct >= 50; } },
+  { g: '▶10', name: '動画10本', ok: function (s) { return s.stats.videos >= 10; } },
+  { g: '★', name: '必須動画コンプ', ok: function (s) { return s.reqTotal && s.reqDone === s.reqTotal; } },
+  { g: 'RP', name: '初ロープレ', ok: function (s) { return s.stats.roleplays >= 1; } },
+  { g: 'RP10', name: 'ロープレ10回', ok: function (s) { return s.stats.roleplays >= 10; } },
+  { g: '3D', name: '3日連続', ok: function (s) { return s.stats.streak >= 3; } },
+  { g: '7D', name: '7日連続', ok: function (s) { return s.stats.streak >= 7; } },
+  { g: 'RA', name: 'ルームアドバイザー', ok: function (s) { return s.goalsTotal && s.goalsDone === s.goalsTotal; } }
+];
+
+function viewHome() {
+  var wrap = h('div');
+  if (!S.trainee) {
+    append(wrap, h('div', { class: 'card' }, h('div', { class: 'empty' }, emptyArt(), h('p', { text: '研修生がまだいません。「管理」タブから追加してください。' }))));
+    return wrap;
+  }
+  if (isStaff() || S.data.me.name !== S.trainee) {
+    var sel = h('select', { onchange: function () { S.trainee = this.value; S.progress = null; render(); } },
+      trainees().map(function (t) { var o = h('option', { value: t.name, text: t.name }); if (t.name === S.trainee) o.selected = true; return o; }));
+    append(wrap, h('div', { class: 'viewer-select' }, h('span', { class: 'eyebrow', text: 'Viewing' }), h('span', { class: 'small muted', text: '表示中の研修生' }), sel));
+  }
+  if (!S.progress || S.progress.name !== S.trainee) {
+    loadProgress(S.trainee);
+    append(wrap, h('div', { class: 'loading', text: 'LOADING' }));
+    return wrap;
+  }
+  var snap = snapshot();
+  var st = stateMap();
+  var editable = canEdit();
+  var stage = STAGES[snap.stage];
+  var nextStage = STAGES[snap.stage + 1];
+
+  // ヒーロー
+  append(wrap, h('section', { class: 'card ink hero dots' },
+    h('div', { class: 'row' }, h('span', { class: 'eyebrow', text: 'From Black to White' }), h('div', { class: 'spacer' }),
+      h('span', { class: 'pill', style: 'color:#fff;border-color:rgba(255,255,255,.3)', text: 'STAGE ' + (snap.stage + 1) + ' / ' + STAGES.length })),
+    h('div', { class: 'hero-grid' },
+      h('div', null,
+        h('div', { class: 'copy', text: S.data.me.name === S.trainee ? '黒から、白へ。' : S.trainee + ' さんの現在地' }),
+        h('div', { class: 'stage-name', text: stage.name }),
+        h('div', { class: 'pct', html: snap.pct + '<small>%</small>' }),
+        h('div', { class: 'bar', style: 'margin:8px 0 6px' }, h('i', { style: 'width:' + snap.pct + '%' })),
+        h('div', { class: 'small', style: 'opacity:.7', text: nextStage ? '次の ' + nextStage.name + ' まで あと ' + Math.max(0, nextStage.min - snap.pct) + '%' : 'ルームアドバイザー到達！' })),
+      stairsSvg(snap.stage)),
+    h('div', { class: 'stats' },
+      h('div', null, h('b', { text: snap.stats.points }), h('span', { text: 'POINTS' })),
+      h('div', null, h('b', { text: snap.stats.streak + (snap.stats.streak ? '' : '') }), h('span', { text: 'DAY STREAK' })),
+      h('div', null, h('b', { text: snap.stats.week }), h('span', { text: 'THIS WEEK' }))),
+    editable ? null : h('p', { class: 'small', style: 'opacity:.6;margin:10px 0 0', text: '他の研修生の進捗は見るだけです。' })));
+
+  // 次のアクション
+  var phases = phasesOf();
+  var current = phases.findIndex(function (p) { return p.tasks.some(function (t) { return !(st[t.id] && st[t.id].done); }); });
+  var nextTask = current >= 0 ? phases[current].tasks.filter(function (t) { return !(st[t.id] && st[t.id].done); })[0] : null;
+  var nextVideo = requiredVideos().filter(function (m) { return S.progress.watched.indexOf(m.id) < 0; })[0];
+  if (nextTask || nextVideo) {
+    var next = h('div', { class: 'next' });
+    if (nextTask) {
+      var doBtn = editable ? h('button', { class: 'btn', text: '完了', onclick: function () { toggle(nextTask.id, true, doBtn); } }) : null;
+      append(next, h('div', { class: 'next-item' }, h('div', { class: 'ico', html: icon('flag') }),
+        h('div', { class: 't' }, h('div', { text: nextTask.title }), h('div', { class: 'small muted', text: phases[current].name + (nextTask.point ? '｜' + nextTask.point : '') })), doBtn));
+    }
+    if (nextVideo && S.data.me.name === S.trainee) {
+      append(next, h('div', { class: 'next-item' }, h('div', { class: 'ico', html: icon('play') }),
+        h('div', { class: 't' }, h('div', { text: nextVideo.title }), h('div', { class: 'small muted', text: '必須動画｜' + nextVideo.section + '｜+' + PT.video + 'pt' })),
+        h('button', { class: 'btn ghost', text: '見る', onclick: function () { openVideo(nextVideo); } })));
+    }
+    append(wrap, h('div', { class: 'card' }, h('div', { class: 'eyebrow', text: 'Next Action' }), h('h2', { class: 'title', text: '次にやること' }), next));
+  }
+
+  // バッジ
+  var seen = S.seenBadges;
+  var row = h('div', { class: 'badges' });
+  var nowOn = [];
+  BADGES.forEach(function (b, i) {
+    var on = !!b.ok(snap);
+    if (on) nowOn.push(i);
+    append(row, h('div', { class: 'badge' + (on ? ' on' : '') + (on && seen && seen.indexOf(i) < 0 ? ' new' : '') }, badgeSvg(b.g, on), b.name));
   });
+  S.seenBadges = nowOn;
+  append(wrap, h('div', { class: 'card' }, h('div', { class: 'row' }, h('div', null, h('div', { class: 'eyebrow', text: 'Badges' }), h('h2', { class: 'title', style: 'margin-bottom:6px', text: 'バッジ' })),
+    h('div', { class: 'spacer' }), h('span', { class: 'pill', text: nowOn.length + ' / ' + BADGES.length })), row));
+
+  // 卒業条件
+  var goalBox = h('div', { class: 'card' }, h('div', { class: 'eyebrow', text: 'Graduation' }), h('h2', { class: 'title', text: 'ルームアドバイザー卒業条件' }));
+  S.data.goals.forEach(function (g, i) {
+    var extra = g.id === 'G02' ? h('span', { class: 'pill', style: 'margin-left:6px', text: snap.reqDone + ' / ' + snap.reqTotal }) : null;
+    append(goalBox, checkRow(g.id, g.title, g.detail, extra, st[g.id], editable, ('0' + (i + 1)).slice(-2), PT.goal));
+  });
+  append(wrap, goalBox);
+
+  // 研修フロー
+  append(wrap, h('div', { class: 'section-head' }, h('h2', { text: '研修フロー' }), h('span', { class: 'en', text: 'TRAINING FLOW' })));
+  var tl = h('div', { class: 'timeline' });
+  phases.forEach(function (p, i) {
+    var d = p.tasks.filter(function (t) { return st[t.id] && st[t.id].done; }).length;
+    var done = d === p.tasks.length;
+    append(tl, h('div', { class: 'phase' + (done ? ' done' : '') + (i === current ? ' current' : '') },
+      h('div', { class: 'node', html: done ? '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#fff" stroke-width="3.5"><path d="M4 12.5l5 5L20 6.5"/></svg>' : String(i + 1) }),
+      h('details', { open: i === current },
+        h('summary', null, h('strong', { text: p.name.replace(/^\d+\.\s*/, '') }),
+          i === current ? h('span', { class: 'pill solid', text: 'NOW' }) : null,
+          h('div', { class: 'mini' }, h('div', { class: 'small', style: 'text-align:right;font:700 .7rem Montserrat', text: d + '/' + p.tasks.length }), h('div', { class: 'bar' }, h('i', { style: 'width:' + (d * 100 / p.tasks.length) + '%' })))),
+        h('div', { class: 'body' }, p.tasks.map(function (t) {
+          return checkRow(t.id, t.title, t.point, t.category ? h('span', { class: 'pill jp', style: 'margin-left:6px', text: t.category }) : null, st[t.id], editable, null, PT.task);
+        })))));
+  });
+  append(wrap, tl);
+
+  // 質問の4大原則
+  append(wrap, h('details', { class: 'card principles' },
+    h('summary', null, h('span', { class: 'eyebrow', text: 'Rules' }), h('strong', { text: '質問の4大原則' })),
+    h('ol', null, PRINCIPLES.map(function (p) { return h('li', { text: p }); })),
+    h('p', { class: 'small muted', text: 'マニュアルにあるものは確認したうえで、それでも分からない点を質問しましょう。' })));
   return wrap;
 }
 
-function checkRow(id, title, detail, extra, st, editable) {
+function checkRow(id, title, detail, extra, st, editable, num, pt) {
   var done = !!(st && st.done);
-  var meta = done && st.by ? '✓ ' + st.by + '　' + st.at : '';
   var cb = h('input', { type: 'checkbox', disabled: !editable || !st, 'aria-label': title });
   cb.checked = done;
-  var row = h('label', { class: 'check' + (done ? ' done' : '') }, cb,
-    h('div', { class: 't' }, h('div', null, title, ' ', extra), detail ? h('div', { class: 'small muted', text: detail }) : null,
-      meta ? h('div', { class: 'small', style: 'color:var(--ok)', text: meta }) : null));
-  cb.addEventListener('change', function () {
-    var want = cb.checked;
-    cb.disabled = true;
-    call('api_setCheck', S.trainee, id, want).then(function (r) {
-      var target = S.progress.rows.filter(function (x) { return x.id === r.id; })[0];
-      if (target) { target.done = r.done; target.by = r.by; target.at = r.at; }
-      var sum = S.data.summaries.filter(function (s) { return s.name === S.trainee; })[0];
-      if (sum) sum.stale = true;
-      render();
-    }).catch(function (e) { cb.checked = !want; cb.disabled = false; toast(errMsg(e), true); });
-  });
+  var row = h('label', { class: 'check' + (done ? ' done' : '') },
+    num ? h('span', { class: 'num', text: num }) : null, cb,
+    h('span', { class: 'box', html: '<svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5"/></svg>' }),
+    h('div', { class: 't' }, h('div', { class: 'main' }, title, extra),
+      detail ? h('div', { class: 'small muted', text: detail }) : null,
+      done && st.by ? h('div', { class: 'meta', text: '✓ ' + st.by + '　' + st.at } ) : null));
+  cb.addEventListener('change', function () { toggle(id, cb.checked, row, cb); });
   return row;
+}
+
+/** チェックの付け外し。フェーズ制覇・ステージアップ時はお祝い演出 */
+function toggle(id, want, anchor, cb) {
+  if (cb) cb.disabled = true;
+  if (anchor && anchor.tagName === 'BUTTON') anchor.disabled = true;
+  var before = snapshot();
+  call('api_setCheck', S.trainee, id, want).then(function (r) {
+    var target = S.progress.rows.filter(function (x) { return x.id === r.id; })[0];
+    var wasDone = target && target.done;
+    if (target) { target.done = r.done; target.by = r.by; target.at = r.at; }
+    if (target && wasDone !== r.done) {
+      var pts = target.kind === '卒業条件' ? PT.goal : PT.task;
+      S.progress.stats.points += r.done ? pts : -pts;
+      if (r.done && S.data.me.name === S.trainee) { S.progress.stats.week++; if (!S.progress.stats.streak) S.progress.stats.streak = 1; }
+    }
+    var after = snapshot();
+    if (r.done && anchor && anchor.isConnected) floatPoints(anchor, '+' + (target && target.kind === '卒業条件' ? PT.goal : PT.task));
+    render();
+    renderChip();
+    if (r.done) {
+      if (after.stage > before.stage) celebrate('STAGE UP', STAGES[after.stage].name + ' に到達しました');
+      else if (after.goalsTotal && after.goalsDone === after.goalsTotal && before.goalsDone < before.goalsTotal) celebrate('GRADUATE', 'ルームアドバイザー卒業おめでとうございます！');
+      else if (after.phasesDone > before.phasesDone) celebrate('PHASE CLEAR', 'フェーズを1つ制覇しました');
+    }
+  }).catch(function (e) { if (cb) { cb.checked = !want; cb.disabled = false; } toast(errMsg(e), true); render(); });
 }
 
 // ---------- みんなの進捗 ----------
 function viewAll() {
   var wrap = h('div');
-  var refresh = h('button', { class: 'btn sub', text: '最新にする', onclick: function () {
+  var list = S.data.summaries.slice();
+  if (!list.length) {
+    append(wrap, h('div', { class: 'card' }, h('div', { class: 'empty' }, emptyArt(), h('p', { text: '研修生がまだいません' }))));
+    return wrap;
+  }
+  var key = { percent: function (s) { return s.percent; }, points: function (s) { return s.stats.points; }, week: function (s) { return s.stats.week; } }[S.sort];
+  list.sort(function (a, b) { return key(b) - key(a); });
+  var mvp = S.data.summaries.slice().sort(function (a, b) { return b.stats.week - a.stats.week; })[0];
+  if (mvp && mvp.stats.week > 0) {
+    append(wrap, h('div', { class: 'card ink dots' }, h('div', { class: 'eyebrow', text: 'Weekly MVP' }),
+      h('div', { class: 'mvp', style: 'margin-top:10px' }, avatar(mvp.name, mvp.percent),
+        h('div', { style: 'flex:1' }, h('div', { style: 'font-weight:700;font-size:1.1rem', text: mvp.name }), h('div', { class: 'small', style: 'opacity:.7', text: '今週 ' + mvp.stats.week + ' 件の記録' })),
+        h('div', { class: 'crown', text: mvp.stats.week }))));
+  }
+  var seg = h('div', { class: 'seg' }, [['percent', '進捗'], ['points', 'ポイント'], ['week', '今週']].map(function (o) {
+    return h('button', { class: S.sort === o[0] ? 'on' : '', text: o[1], onclick: function () { S.sort = o[0]; render(); } });
+  }));
+  var refresh = h('button', { class: 'btn ghost', text: '更新', onclick: function () {
     refresh.disabled = true;
     call('api_bootstrap').then(function (d) { S.data = d; render(); }).catch(function (e) { toast(errMsg(e), true); refresh.disabled = false; });
   } });
-  var list = S.data.summaries.slice().sort(function (a, b) { return b.percent - a.percent; });
-  var card = h('div', { class: 'card' }, h('div', { class: 'row' }, h('h2', { style: 'margin:0', text: '👥 みんなの進捗' }), h('div', { class: 'spacer' }), refresh));
-  if (!list.length) { append(card, h('p', { class: 'empty', text: '研修生がまだいません' })); append(wrap, card); return wrap; }
-  var table = h('table', { class: 'sum' },
-    h('tr', null, h('th', { text: '名前' }), h('th', { text: 'いまのフェーズ' }), h('th', { text: '進捗' }),
-      h('th', { class: 'hide-sm', text: '卒業条件' }), h('th', { class: 'hide-sm', text: '必須動画' }), h('th', { class: 'hide-sm', text: '最終更新' })));
-  list.forEach(function (s) {
-    append(table, h('tr', { class: 'click', onclick: function () { S.trainee = s.name; S.progress = null; go('home'); } },
-      h('td', null, h('strong', { text: s.name }), s.joined ? h('div', { class: 'small muted', text: '入社 ' + s.joined }) : null),
-      h('td', { class: 'small', text: s.phase }),
-      h('td', { style: 'min-width:90px' }, h('div', { class: 'small', text: s.percent + '%' }), h('div', { class: 'bar' }, h('div', { style: 'width:' + s.percent + '%' }))),
-      h('td', { class: 'hide-sm', text: s.goalsDone + ' / ' + s.goalsTotal }),
-      h('td', { class: 'hide-sm', text: s.videosWatched + ' / ' + s.videosRequired }),
-      h('td', { class: 'hide-sm small', text: s.lastUpdate || '—' })));
+  var card = h('div', { class: 'card' }, h('div', { class: 'row', style: 'margin-bottom:6px' },
+    h('div', null, h('div', { class: 'eyebrow', text: 'Leaderboard' }), h('h2', { class: 'title', style: 'margin:4px 0 0', text: 'みんなの進捗' })), h('div', { class: 'spacer' }), seg, refresh));
+  list.forEach(function (s, i) {
+    var st = STAGES[stageOf(s.percent)];
+    append(card, h('div', { class: 'leader' + (i < 3 ? ' top' : ''), onclick: function () { S.trainee = s.name; S.progress = null; go('home'); } },
+      h('div', { class: 'rank', text: ('0' + (i + 1)).slice(-2) }),
+      avatar(s.name, s.percent),
+      h('div', { style: 'min-width:0' }, h('div', { class: 'row', style: 'gap:6px' }, h('strong', { text: s.name }), h('span', { class: 'pill', text: st.name })),
+        h('div', { class: 'small muted', style: 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis', text: s.phase.replace(/^\d+\.\s*/, '') + '｜動画 ' + s.videosWatched + '/' + s.videosRequired + '｜🔥' + s.stats.streak }),
+        h('div', { class: 'bar', style: 'margin-top:6px' }, h('i', { style: 'width:' + s.percent + '%' }))),
+      h('div', { class: 'score' }, h('b', { text: S.sort === 'points' ? s.stats.points : S.sort === 'week' ? s.stats.week : s.percent + '%' }),
+        h('span', { text: S.sort === 'points' ? 'POINTS' : S.sort === 'week' ? 'THIS WEEK' : '卒業条件 ' + s.goalsDone + '/' + s.goalsTotal }))));
   });
-  append(card, table);
   append(wrap, card);
   return wrap;
 }
@@ -348,23 +761,37 @@ function viewElearning() {
   });
   var req = videos.filter(function (v) { return v.required; });
   var reqDone = req.filter(function (v) { return watched.indexOf(v.id) >= 0; }).length;
-  append(wrap, h('div', { class: 'card' },
-    h('div', { class: 'row' }, h('h2', { style: 'margin:0', text: '🎬 eラーニング' }), h('div', { class: 'spacer' }),
-      h('span', { class: 'badge ' + (reqDone === req.length && req.length ? 'ok' : ''), text: '必須 ' + reqDone + ' / ' + req.length })),
-    h('p', { class: 'small muted', text: '★①〜⑥が卒業に必須です。1.5〜2倍速での視聴がおすすめ。見終わったら動画の下で気づき・学びを入力すると「視聴済み」になります。一度見た後、実務を経験してからもう一度見ると理解が深まります。' })));
-  if (!videos.length) append(wrap, h('p', { class: 'empty', text: '動画がまだ登録されていません' }));
+  var pct = req.length ? Math.round(reqDone * 100 / req.length) : 0;
+  append(wrap, h('div', { class: 'card ink dots' },
+    h('div', { class: 'eyebrow', text: 'E-Learning' }),
+    h('div', { class: 'row', style: 'align-items:flex-end;margin-top:6px' },
+      h('div', null, h('div', { style: 'font-weight:700;font-size:1.2rem', text: 'eラーニング' }),
+        h('div', { class: 'small', style: 'opacity:.7', text: '★①〜⑥が卒業に必須。1.5〜2倍速がおすすめ。' })),
+      h('div', { class: 'spacer' }),
+      h('div', { style: 'text-align:right' }, h('div', { style: 'font:800 2rem/1 Montserrat', text: reqDone + '/' + req.length }), h('div', { class: 'eyebrow', text: 'Required' }))),
+    h('div', { class: 'bar', style: 'margin-top:12px' }, h('i', { style: 'width:' + pct + '%' })),
+    h('div', { class: 'small', style: 'opacity:.6;margin-top:8px', text: '見終わったら動画の下で気づき・学びを入力すると視聴済みになります（+' + PT.video + 'pt）。' })));
+  if (!videos.length) append(wrap, h('div', { class: 'card' }, h('div', { class: 'empty' }, emptyArt(), h('p', { text: '動画がまだ登録されていません' }))));
+  var firstOpen = sections.filter(function (s) {
+    return s.items.some(function (v) { return v.required && watched.indexOf(v.id) < 0; });
+  })[0];
   sections.forEach(function (s) {
     var d = s.items.filter(function (v) { return watched.indexOf(v.id) >= 0; }).length;
     var required = s.items.some(function (v) { return v.required; });
-    append(wrap, h('details', { class: 'phase', open: required && d < s.items.length },
-      h('summary', null, h('strong', { style: 'flex:1', text: s.name }), required ? h('span', { class: 'badge req', text: '必須' }) : h('span', { class: 'badge', text: '任意' }),
-        h('span', { class: 'badge' + (d === s.items.length ? ' ok' : ''), text: d + '/' + s.items.length })),
-      h('div', { class: 'body' }, s.items.map(function (v) {
+    var m = s.name.match(/[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭]/);
+    var title = s.name.replace(/^★?[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭]/, '');
+    append(wrap, h('details', { class: 'sec-card' + (required ? '' : ' opt') + (d === s.items.length ? ' complete' : ''), open: s === firstOpen },
+      h('summary', null, h('div', { class: 'sec-no', text: m ? m[0] : '・' }),
+        h('div', { style: 'flex:1;min-width:0' }, h('div', { style: 'font-weight:700', text: title }),
+          h('div', { class: 'small muted', text: (required ? '必須' : '任意') + '｜' + s.items.length + '本' })),
+        ring(d, s.items.length)),
+      s.items.map(function (v) {
         var w = watched.indexOf(v.id) >= 0;
-        return h('button', { class: 'list-item', onclick: function () { openVideo(v); } },
-          h('span', { class: w ? 'watched' : 'muted', text: w ? '✓' : '▶' }),
-          h('div', { class: 't' }, h('div', { text: v.title }), v.note ? h('div', { class: 'small', style: 'color:var(--warn)', text: '⚠ 補足あり' }) : null));
-      }))));
+        var id = youtubeId(v.url);
+        return h('button', { class: 'vid', onclick: function () { openVideo(v); } },
+          h('div', { class: 'thumb', style: id ? "background-image:url('https://i.ytimg.com/vi/" + id + "/mqdefault.jpg')" : '' }, w ? h('div', { class: 'done', text: 'WATCHED' }) : null),
+          h('div', { class: 't' }, h('div', { text: v.title }), v.note ? h('div', { class: 'small muted', text: '※ 補足あり' }) : null));
+      })));
   });
   return wrap;
 }
@@ -372,13 +799,13 @@ function openVideo(v) {
   var id = youtubeId(v.url);
   var insight = h('textarea', { placeholder: '動画で得た気づき・学び（必須）' });
   var question = h('textarea', { placeholder: '不明点や、先輩に質問したいこと（なければ空欄）' });
-  var btn = h('button', { class: 'btn', text: '送信して視聴済みにする' });
+  var btn = h('button', { class: 'btn', text: '送信して視聴済みにする（+' + PT.video + 'pt）' });
   var past = (S.notes || []).filter(function (n) { return n.id === v.id; });
-  var close = openModal(v.title, [
+  openModal(v.title, [
     id ? h('div', { class: 'video' }, h('iframe', { src: 'https://www.youtube.com/embed/' + id + '?rel=0', allow: 'autoplay; encrypted-media; picture-in-picture', allowfullscreen: true, title: v.title })) : null,
-    v.note ? h('div', { class: 'note', text: '⚠ 補足：' + v.note }) : null,
+    v.note ? h('div', { class: 'note' }, h('b', { text: 'NOTE' }), v.note) : null,
     h('p', { class: 'small muted', text: v.section }),
-    past.length ? h('div', { class: 'card', style: 'background:var(--soft)' }, h('strong', { class: 'small', text: '前回の記録（' + past[0].at + '）' }), h('p', { class: 'small', text: past[0].insight })) : null,
+    past.length ? h('div', { class: 'note', style: 'border-style:solid' }, h('b', { text: 'LAST NOTE｜' + past[0].at }), past[0].insight) : null,
     h('label', { class: 'field' }, '気づき・学び', insight),
     h('label', { class: 'field' }, '質問（後日の面談で使います）', question),
     btn
@@ -386,11 +813,21 @@ function openVideo(v) {
   btn.addEventListener('click', function () {
     btn.disabled = true;
     call('api_submitElearning', v.id, insight.value, question.value).then(function () {
-      S.notes = (S.notes || []);
+      var first = !(S.notes || []).some(function (n) { return n.id === v.id; });
+      S.notes = S.notes || [];
       S.notes.unshift({ id: v.id, title: v.title, insight: insight.value, question: question.value, at: 'たった今' });
-      if (S.progress && S.progress.name === S.data.me.name && S.progress.watched.indexOf(v.id) < 0) S.progress.watched.push(v.id);
-      toast('記録しました');
-      close();
+      if (S.progress && S.progress.name === S.data.me.name && S.progress.watched.indexOf(v.id) < 0) {
+        var before = snapshot();
+        S.progress.watched.push(v.id);
+        S.progress.stats.points += PT.video;
+        S.progress.stats.videos++;
+        S.progress.stats.week++;
+        var after = snapshot();
+        if (after.reqTotal && after.reqDone === after.reqTotal && before.reqDone < before.reqTotal) setTimeout(function () { celebrate('COMPLETE', '必須動画をすべて視聴しました'); }, 300);
+      }
+      toast(first ? '記録しました（+' + PT.video + 'pt）' : '記録しました');
+      closeModal();
+      renderChip();
       render();
     }).catch(function (e) { btn.disabled = false; toast(errMsg(e), true); });
   });
@@ -399,27 +836,93 @@ function openVideo(v) {
 // ---------- マニュアル ----------
 function viewManuals() {
   var wrap = h('div');
-  var input = h('input', { type: 'search', placeholder: 'マニュアルを検索…', value: S.filter });
-  var listBox = h('div');
+  var input = h('input', { type: 'search', placeholder: 'マニュアルを検索…（例：重説、レインズ）', value: S.filter });
+  var grid = h('div', { class: 'man-grid' });
   var draw = function () {
-    listBox.innerHTML = '';
+    grid.innerHTML = '';
     var q = input.value.trim().toLowerCase();
     S.filter = input.value;
     var items = S.data.materials.filter(function (m) { return m.group === 'マニュアル' && (!q || m.title.toLowerCase().indexOf(q) >= 0); });
-    if (!items.length) { append(listBox, h('p', { class: 'empty', text: '該当するマニュアルがありません' })); return; }
+    if (!items.length) { append(grid, h('p', { class: 'empty', text: '該当するマニュアルがありません' })); return; }
     items.forEach(function (m) {
-      append(listBox, h('button', { class: 'list-item', onclick: function () { openDoc(m); } },
-        h('span', { text: m.kind === 'スプレッド' ? '📊' : '📄' }),
-        h('div', { class: 't' }, h('div', { text: m.title }), h('div', { class: 'small muted', text: m.kind }))));
+      append(grid, h('button', { class: 'man', onclick: function () { openManual(m); } },
+        svg(icon(m.kind === 'スプレッド' ? 'sheet' : manualIcon(m.title))),
+        h('b', { text: m.title }),
+        h('span', { class: 'k pill', text: m.kind === 'スプレッド' ? 'SHEET' : 'MANUAL' })));
     });
   };
   input.addEventListener('input', draw);
   draw();
-  append(wrap, h('div', { class: 'card' }, h('h2', { text: '📘 マニュアル' }), input), h('div', { class: 'card' }, listBox));
+  append(wrap, h('div', { class: 'card ink dots' }, h('div', { class: 'eyebrow', text: 'Manuals' }),
+    h('div', { style: 'font-weight:700;font-size:1.2rem;margin:6px 0 12px', text: 'マニュアル' }), input), grid);
   return wrap;
 }
-function openDoc(m) {
-  openModal(m.title, h('div', { class: 'docwrap' }, h('iframe', { class: 'docframe', src: previewUrl(m.url), title: m.title })), m.url);
+function openManual(m) {
+  var root = document.getElementById('modal-root');
+  root.innerHTML = '';
+  document.body.classList.add('reading');
+  var body = h('div', { class: 'loading', text: 'LOADING' });
+  var actions = h('span', { style: 'display:flex;gap:6px' });
+  var reader = h('div', { class: 'reader' },
+    h('div', { class: 'bar-top' }, h('button', { text: '← 一覧', onclick: closeModal }), h('strong', { text: m.title }), actions),
+    h('div', { class: 'cover dots' }, h('div', { class: 'wrap' }, h('div', { class: 'eyebrow', text: 'Monochro Manual' }), h('h1', { text: m.title }),
+      h('div', { class: 'row', id: 'cover-meta' }))),
+    body);
+  root.appendChild(reader);
+  call('api_getManual', m.id).then(function (d) {
+    body.className = '';
+    body.textContent = '';
+    if (!d.html) {
+      append(body, h('div', { class: 'layout', style: 'grid-template-columns:1fr' }, h('iframe', { class: 'doc-frame', src: String(d.url).replace(/\/(edit|view)([?#].*)?$/, '/preview'), title: m.title })));
+      append(actions, h('a', { href: d.url, target: '_blank', rel: 'noopener', text: '開く ↗' }));
+      return;
+    }
+    var doc = h('article', { class: 'doc', html: d.html });
+    embedVideos(doc);
+    var minutes = Math.max(1, Math.round(doc.textContent.length / 600));
+    var meta = document.getElementById('cover-meta');
+    if (meta) append(meta, h('span', { class: 'pill', style: 'color:#fff;border-color:rgba(255,255,255,.3)', text: '約' + minutes + '分で読めます' }),
+      h('span', { class: 'pill', style: 'color:#fff;border-color:rgba(255,255,255,.3)', text: d.toc.filter(function (t) { return t.level === 2; }).length + ' SECTIONS' }));
+    var toc = h('nav', { class: 'toc' }, d.toc.map(function (t) {
+      return h('a', { href: '#' + t.id, class: 'l' + t.level, text: t.text, onclick: function (e) {
+        e.preventDefault();
+        var target = doc.querySelector('#' + t.id);
+        if (target) reader.scrollTo({ top: target.getBoundingClientRect().top + reader.scrollTop - 64, behavior: 'smooth' });
+      } });
+    }));
+    append(body, h('div', { class: 'layout' }, d.toc.length ? toc : h('div'), doc));
+    append(actions, h('button', { text: 'PDF保存', onclick: function () { printManual(m.title, d.html); } }));
+    if (d.canEdit) append(actions, h('a', { href: d.url, target: '_blank', rel: 'noopener', text: '編集 ↗' }));
+    var links = toc.querySelectorAll('a');
+    reader.addEventListener('scroll', function () {
+      var cur = null;
+      d.toc.forEach(function (t, i) { var el = doc.querySelector('#' + t.id); if (el && el.getBoundingClientRect().top < 120) cur = i; });
+      links.forEach(function (a, i) { a.classList.toggle('on', i === cur); });
+    });
+  }).catch(function (e) { body.className = 'empty'; body.textContent = errMsg(e); });
+}
+/** 「▶ 動画」のリンクだけの段落を、その場で再生できるプレイヤーに置き換える */
+function embedVideos(doc) {
+  Array.prototype.slice.call(doc.querySelectorAll('a[href*="youtu"]')).forEach(function (a) {
+    var id = youtubeId(a.getAttribute('href'));
+    var p = a.closest('p');
+    if (!id || !p || !/▶|動画/.test(p.textContent)) return;
+    var box = h('div', { class: 'mvideo' }, h('div', { class: 'video' }, h('iframe', { src: 'https://www.youtube.com/embed/' + id + '?rel=0', allowfullscreen: true, title: '動画', loading: 'lazy' })));
+    p.replaceWith(box);
+  });
+}
+/** 印刷用の別ウィンドウを開く。ブラウザの印刷で「PDFに保存」を選べる */
+function printManual(title, html) {
+  var styles = Array.prototype.map.call(document.querySelectorAll('style'), function (s) { return s.textContent; }).join('\n');
+  var w = window.open('', '_blank');
+  if (!w) { toast('ポップアップがブロックされました。許可してからもう一度押してください。', true); return; }
+  w.document.write('<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><title>' + title.replace(/</g, '&lt;') + '</title>' +
+    '<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&family=Zen+Kaku+Gothic+New:wght@400;700&display=swap" rel="stylesheet">' +
+    '<style>' + styles + ' body{padding:0;background:#fff} .doc{border:0;padding:0} .doc h2{break-after:avoid} .doc figure{break-inside:avoid} @page{margin:16mm}' +
+    ' .print-cover{border-bottom:3px solid #0d0d0d;padding-bottom:14px;margin-bottom:24px} .print-cover h1{font-size:24px;margin:6px 0 0}</style></head><body>' +
+    '<div class="print-cover"><div class="eyebrow">MONOCHRO MANUAL ※社外秘</div><h1>' + title.replace(/</g, '&lt;') + '</h1></div>' +
+    '<article class="doc">' + html + '</article><script>setTimeout(function(){print()},800)<\/script></body></html>');
+  w.document.close();
 }
 
 // ---------- ロープレ ----------
@@ -442,7 +945,7 @@ function viewRoleplay() {
     file: h('input', { type: 'file', accept: 'audio/*,video/*' })
   };
   var status = h('span', { class: 'small muted' });
-  var btn = h('button', { class: 'btn', text: '記録する' });
+  var btn = h('button', { class: 'btn', text: '記録する（話し手 +' + PT.roleplay + 'pt）' });
   btn.addEventListener('click', function () {
     var rec = { date: f.date.value.replace(/-/g, '/'), minutes: f.minutes.value, speaker: f.speaker.value, listener: f.listener.value,
       topic: f.topic.value.trim(), focus: f.focus.value, feedback: f.feedback.value };
@@ -453,13 +956,18 @@ function viewRoleplay() {
     status.textContent = file ? '録音をアップロード中…（少し時間がかかります）' : '保存中…';
     readFile(file).then(function (payload) { return call('api_addRoleplay', rec, payload); }).then(function () {
       toast('ロープレを記録しました');
+      if (S.progress && S.progress.name === rec.speaker) { S.progress.stats.points += PT.roleplay; S.progress.stats.roleplays++; S.progress.stats.week++; }
       S.roleplays = null;
+      renderChip();
       render();
     }).catch(function (e) { btn.disabled = false; status.textContent = ''; toast(errMsg(e), true); });
   });
+  append(wrap, h('div', { class: 'card ink dots' }, h('div', { class: 'eyebrow', text: 'Role Play' }),
+    h('div', { style: 'font-weight:700;font-size:1.2rem;margin:6px 0 4px', text: 'ロープレ' }),
+    h('div', { class: 'small', style: 'opacity:.7', text: '話し手・聞き手・内容・フィードバックを残して、成長を見える化。録音も一緒に保存できます。' })));
   append(wrap, h('details', { class: 'card' },
-    h('summary', null, h('strong', { text: '＋ ロープレを記録する' })),
-    h('div', { style: 'margin-top:12px' },
+    h('summary', { style: 'cursor:pointer;list-style:none' }, h('strong', { text: '＋ ロープレを記録する' })),
+    h('div', { style: 'margin-top:14px' },
       h('div', { class: 'grid2' }, h('label', { class: 'field' }, '日付', f.date), h('label', { class: 'field' }, '所要時間（分）', f.minutes),
         h('label', { class: 'field' }, '話し手', f.speaker), h('label', { class: 'field' }, '聞き手', f.listener)),
       h('label', { class: 'field' }, '内容', f.topic,
@@ -467,23 +975,28 @@ function viewRoleplay() {
       h('label', { class: 'field' }, '意識するポイント', f.focus),
       h('label', { class: 'field' }, 'フィードバック', f.feedback),
       h('label', { class: 'field' }, '録音・録画（任意・40MBまで）', f.file,
-        h('div', { class: 'small', text: 'スマホのボイスメモやMeetの録画ファイルを選べます。文字起こしとAIフィードバックは第2弾で追加予定です。' })),
+        h('div', { class: 'small muted', text: 'スマホのボイスメモやMeetの録画ファイルを選べます。文字起こしとAIフィードバックは第2弾で追加予定です。' })),
       h('div', { class: 'row' }, btn, status))));
 
   var filter = h('select', { onchange: function () { S.rpFilter = this.value; render(); } },
     [h('option', { value: '', text: '全員' })].concat(people.map(function (n) { var o = h('option', { value: n, text: n }); if (n === S.rpFilter) o.selected = true; return o; })));
-  var listCard = h('div', { class: 'card' }, h('div', { class: 'row' }, h('h2', { style: 'margin:0', text: '🎙 ロープレ記録' }), h('div', { class: 'spacer' }), h('div', { style: 'width:140px' }, filter)));
-  if (!S.roleplays) append(listCard, h('p', { class: 'loading', text: '読み込み中…' }));
+  var listCard = h('div', { class: 'card' }, h('div', { class: 'row', style: 'margin-bottom:6px' },
+    h('div', null, h('div', { class: 'eyebrow', text: 'History' }), h('h2', { class: 'title', style: 'margin:4px 0 0', text: 'ロープレ記録' })),
+    h('div', { class: 'spacer' }), h('div', { style: 'width:150px' }, filter)));
+  if (!S.roleplays) append(listCard, h('p', { class: 'loading', text: 'LOADING' }));
   else {
     var rows = S.roleplays.filter(function (r) { return !S.rpFilter || r.speaker === S.rpFilter || r.listener === S.rpFilter; });
-    if (!rows.length) append(listCard, h('p', { class: 'empty', text: 'まだ記録がありません' }));
+    if (!rows.length) append(listCard, h('div', { class: 'empty' }, emptyArt(), h('p', { text: 'まだ記録がありません' })));
     rows.forEach(function (r) {
-      append(listCard, h('div', { class: 'check', style: 'display:block' },
-        h('div', { class: 'row' }, h('strong', { text: r.topic }), h('div', { class: 'spacer' }), h('span', { class: 'small muted', text: r.date + (r.minutes ? '・' + r.minutes + '分' : '') })),
-        h('div', { class: 'small muted', text: '話し手：' + r.speaker + (r.listener ? '　聞き手：' + r.listener : '') }),
-        r.focus ? h('div', { class: 'small', text: '意識：' + r.focus }) : null,
-        r.feedback ? h('div', { class: 'small', style: 'white-space:pre-wrap', text: 'FB：' + r.feedback }) : null,
-        r.audio ? h('a', { class: 'small', href: r.audio, target: '_blank', rel: 'noopener', text: '🎧 録音を開く' }) : null));
+      var dm = String(r.date).match(/(\d{4})\/(\d{1,2})\/(\d{1,2})/);
+      append(listCard, h('div', { class: 'rp' },
+        h('div', { class: 'date' }, h('b', { text: dm ? dm[3] : '–' }), h('span', { text: dm ? dm[1] + '.' + dm[2] : '' })),
+        h('div', { style: 'min-width:0' },
+          h('div', { class: 'row', style: 'gap:6px' }, h('strong', { text: r.topic }), r.minutes ? h('span', { class: 'pill', text: r.minutes + ' MIN' }) : null),
+          h('div', { class: 'small muted', text: '話し手 ' + r.speaker + (r.listener ? '　聞き手 ' + r.listener : '') }),
+          r.focus ? h('div', { class: 'small', text: '意識：' + r.focus }) : null,
+          r.feedback ? h('div', { class: 'fb', text: r.feedback }) : null,
+          r.audio ? h('a', { class: 'small', href: r.audio, target: '_blank', rel: 'noopener', text: '🎧 録音を開く' }) : null)));
     });
   }
   append(wrap, listCard);
@@ -506,12 +1019,12 @@ function viewAdmin() {
   call('api_adminLinks').then(function (l) {
     links.innerHTML = '';
     append(links, h('div', { class: 'row' },
-      h('a', { class: 'btn sub', href: l.spreadsheet, target: '_blank', rel: 'noopener', text: '📊 データのスプレッドシート' }),
-      h('a', { class: 'btn sub', href: l.manuals, target: '_blank', rel: 'noopener', text: '📘 マニュアルのフォルダ' }),
-      h('a', { class: 'btn sub', href: l.recordings, target: '_blank', rel: 'noopener', text: '🎙 録音のフォルダ' })));
+      h('a', { class: 'btn ghost', href: l.spreadsheet, target: '_blank', rel: 'noopener', text: 'データのスプレッドシート' }),
+      h('a', { class: 'btn ghost', href: l.manuals, target: '_blank', rel: 'noopener', text: 'マニュアルのフォルダ' }),
+      h('a', { class: 'btn ghost', href: l.recordings, target: '_blank', rel: 'noopener', text: '録音のフォルダ' })));
   }).catch(function (e) { links.textContent = errMsg(e); });
-  append(wrap, h('div', { class: 'card' }, h('h2', { text: '⚙ 管理' }),
-    h('p', { class: 'small muted', text: '動画・マニュアルの追加や修正、卒業条件・タスクの変更は、データのスプレッドシート（資料マスター・卒業条件・タスクマスター）を直接編集します。' }), links));
+  append(wrap, h('div', { class: 'card' }, h('div', { class: 'eyebrow', text: 'Admin' }), h('h2', { class: 'title', text: '管理' }),
+    h('p', { class: 'small muted', text: '動画・マニュアルの追加や修正、卒業条件・タスクの変更は、データのスプレッドシート（資料マスター・卒業条件・タスクマスター）を直接編集します。マニュアル本文はフォルダのGoogleドキュメントを編集すると、アプリの表示にも反映されます。' }), links));
 
   if (S.data.me.role === '管理者') {
     var f = { name: h('input', { placeholder: '例：山田太郎' }), email: h('input', { type: 'email', placeholder: 'name@monochro-inc.com' }),
@@ -524,15 +1037,16 @@ function viewAdmin() {
         return call('api_bootstrap');
       }).then(function (d) { S.data = d; render(); }).catch(function (e) { btn.disabled = false; toast(errMsg(e), true); });
     });
-    append(wrap, h('div', { class: 'card' }, h('h2', { text: '＋ メンバーを追加' }),
+    append(wrap, h('div', { class: 'card' }, h('div', { class: 'eyebrow', text: 'Members' }), h('h2', { class: 'title', text: 'メンバーを追加' }),
       h('div', { class: 'grid2' }, h('label', { class: 'field' }, '名前', f.name), h('label', { class: 'field' }, 'メール（会社のGoogleアカウント）', f.email),
         h('label', { class: 'field' }, '役割', f.role), h('label', { class: 'field' }, '入社日', f.joined)),
       h('p', { class: 'small muted', text: '研修生を追加すると、その人の進捗シートが自動で作られます。' }), btn));
   }
-  append(wrap, h('div', { class: 'card' }, h('h2', { text: 'メンバー' }),
+  append(wrap, h('div', { class: 'card' }, h('h2', { class: 'title', text: 'メンバー' }),
     S.data.members.map(function (m) {
-      return h('div', { class: 'check' }, h('div', { class: 't' }, h('strong', { text: m.name }), ' ', h('span', { class: 'badge', text: m.role }),
-        m.status !== '在籍' ? h('span', { class: 'badge warn', text: m.status }) : null));
+      return h('div', { class: 'leader', style: 'grid-template-columns:46px 1fr auto;cursor:default' }, avatar(m.name, 0),
+        h('strong', { text: m.name }), h('div', { class: 'row', style: 'gap:6px' }, h('span', { class: 'pill jp', text: m.role }),
+          m.status !== '在籍' ? h('span', { class: 'pill jp', text: m.status }) : null));
     })));
   return wrap;
 }

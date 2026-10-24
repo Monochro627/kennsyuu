@@ -71,7 +71,7 @@ class FakeSpreadsheet {
   setSpreadsheetTimeZone() {}
 }
 
-function createContext({ userEmail, sourceFlowRows, siteImportRows }) {
+function createContext({ userEmail, sourceFlowRows, siteImportRows, docExportHtml }) {
   const store = {};
   const books = {};
   let seq = 0;
@@ -85,6 +85,8 @@ function createContext({ userEmail, sourceFlowRows, siteImportRows }) {
     createFolder: () => folder('F' + ++seq),
     setSharing: () => {},
     createFile: (blob) => ({ getUrl: () => 'https://drive.google.com/file/d/FILE' + ++seq + '/view', blob }),
+    getFilesByName: () => ({ hasNext: () => false }),
+    searchFiles: () => ({ hasNext: () => false }),
   });
   const ctx = {
     console,
@@ -92,6 +94,7 @@ function createContext({ userEmail, sourceFlowRows, siteImportRows }) {
     PropertiesService: { getScriptProperties: () => ({
       getProperty: (k) => store[k] ?? null,
       setProperties: (o) => Object.assign(store, o),
+      setProperty: (k, v) => { store[k] = v; },
     }) },
     SpreadsheetApp: {
       create: (n) => { const ss = new FakeSpreadsheet('SS' + ++seq, n); books[ss.id] = ss; return ss; },
@@ -100,7 +103,7 @@ function createContext({ userEmail, sourceFlowRows, siteImportRows }) {
     },
     DriveApp: {
       createFolder: () => folder('ROOT'),
-      getFileById: () => ({ moveTo() {} }),
+      getFileById: () => ({ moveTo() {}, getLastUpdated: () => new Date(0) }),
       getFolderById: (id) => folder(id),
       Access: {}, Permission: {},
     },
@@ -120,13 +123,15 @@ function createContext({ userEmail, sourceFlowRows, siteImportRows }) {
     },
     Logger: { log: () => {} },
     HtmlService: {},
-    importSite_: () => siteImportRows,
+    ScriptApp: { getOAuthToken: () => 'token' },
+    UrlFetchApp: { fetch: () => ({ getResponseCode: () => 200, getContentText: () => docExportHtml || '<html><body><p>本文</p></body></html>' }) },
   };
   vm.createContext(ctx);
-  for (const f of ['Code.js', 'Setup.js']) {
+  for (const f of ['SiteImport.js', 'Manual.js', 'Code.js', 'Setup.js']) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '../gas', f), 'utf8'), ctx, { filename: f });
   }
-  // SiteImport.js はフェイクの importSite_ を使うので読み込まない
+  // サイトの取り込みはテスト用の行に差し替える
+  ctx.importSite_ = () => siteImportRows;
   ctx.books = books;
   return ctx;
 }

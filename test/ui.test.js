@@ -9,6 +9,7 @@ const { createContext } = require('./fake_gas');
 
 const materials = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 const outDir = process.argv[3];
+const docExportHtml = process.argv[4] ? fs.readFileSync(process.argv[4], 'utf8') : undefined;
 fs.mkdirSync(outDir, { recursive: true });
 const flowRows = [
   ['', 'カテゴリ', 'タスク', '進捗', 'ポイント'],
@@ -19,7 +20,7 @@ const flowRows = [
   ['※ひたすらロープレ', 'ロールプレイング', '①ヒアリング', false],
   ['', 'ロールプレイング', '②物件提案', false, 'メラビアンも練習のため、動画撮影後モニターに移す'],
 ];
-const ctx = createContext({ userEmail: 'owner@monochro-inc.com', sourceFlowRows: flowRows, siteImportRows: materials });
+const ctx = createContext({ userEmail: 'owner@monochro-inc.com', sourceFlowRows: flowRows, siteImportRows: materials, docExportHtml });
 const run = (code) => vm.runInContext(code, ctx);
 run('setup()');
 run(`api_addMember({name:'小田天誠', email:'t.oda@monochro-inc.com', role:'研修生', joined:'2026/10/01'})`);
@@ -67,25 +68,31 @@ window.google = { script: { get run() {
   const p = await open('t.oda@monochro-inc.com', 390);
   await p.waitForSelector('text=卒業条件');
   await p.screenshot({ path: path.join(outDir, '1_home_trainee.png'), fullPage: true });
-  await p.locator('label.check', { hasText: '業務契約締結' }).locator('input').check();
+  await p.locator('label.check', { hasText: '業務契約締結' }).click();
   await p.waitForSelector('text=✓ 小田天誠');
   assert.strictEqual(JSON.parse(JSON.stringify(run(`api_getProgress('小田天誠')`))).rows.find((r) => r.id === 'T002').done, true);
 
   await p.click('nav.tabs button:has-text("eラーニング")');
-  await p.waitForSelector('text=★①はじめに');
+  await p.waitForSelector('.sec-card');
   await p.screenshot({ path: path.join(outDir, '2_elearning.png'), fullPage: false });
-  await p.click('button.list-item:has-text("オリエンテーション")');
+  await p.click('button.vid:has-text("オリエンテーション")');
   await p.waitForSelector('.modal iframe');
   await p.fill('.modal textarea >> nth=0', '仲介の仕事の全体像が分かった');
   await p.screenshot({ path: path.join(outDir, '3_video_modal.png') });
   await p.click('.modal button:has-text("送信して視聴済みにする")');
   await p.waitForSelector('text=記録しました');
-  await p.waitForSelector('.list-item:has-text("オリエンテーション") .watched');
+  await p.waitForSelector('.vid:has-text("オリエンテーション") .done');
 
   await p.click('nav.tabs button:has-text("マニュアル")');
   await p.fill('input[type=search]', 'レインズ');
-  assert.strictEqual(await p.locator('button.list-item').count(), 1);
+  assert.strictEqual(await p.locator('button.man').count(), 1);
+  await p.fill('input[type=search]', '');
   await p.screenshot({ path: path.join(outDir, '4_manuals.png') });
+  await p.click('button.man:has-text("保証会社")');
+  await p.waitForSelector('.doc h2');
+  await p.waitForTimeout(300);
+  await p.screenshot({ path: path.join(outDir, '4b_manual_reader.png') });
+  await p.click('.reader button:has-text("一覧")');
 
   await p.click('nav.tabs button:has-text("ロープレ")');
   await p.click('summary:has-text("ロープレを記録する")');
@@ -99,11 +106,11 @@ window.google = { script: { get run() {
   await p.screenshot({ path: path.join(outDir, '5_roleplay.png'), fullPage: true });
 
   await p.click('nav.tabs button:has-text("みんな")');
-  await p.waitForSelector('table.sum');
+  await p.waitForSelector('.leader');
   await p.screenshot({ path: path.join(outDir, '6_all.png') });
   assert.strictEqual(await p.locator('nav.tabs button:has-text("管理")').count(), 0, 'trainee has no admin tab');
   // 他の研修生の進捗は見るだけ
-  await p.click('tr.click:has-text("宮川大輝")');
+  await p.click('.leader:has-text("宮川大輝")');
   await p.waitForSelector('text=他の研修生の進捗は見るだけです');
   assert.ok(await p.locator('label.check input').first().isDisabled());
 
@@ -117,8 +124,17 @@ window.google = { script: { get run() {
   await a.waitForSelector('text=新人 花子 さんを追加しました');
   await a.screenshot({ path: path.join(outDir, '7_admin.png'), fullPage: true });
   await a.click('nav.tabs button:has-text("卒業フロー")');
-  await a.waitForSelector('text=いまここ');
+  await a.waitForSelector('text=NOW');
   await a.screenshot({ path: path.join(outDir, '8_home_admin_pc.png'), fullPage: true });
+
+  // 宮川さんが入社前フェーズを全部終えると PHASE CLEAR の演出
+  const m = await open('miyagawa@monochro-inc.com', 390);
+  await m.waitForSelector('text=黒から、白へ。');
+  await m.screenshot({ path: path.join(outDir, '0_hero_miyagawa.png') });
+  await m.locator('label.check', { hasText: 'Gmail登録' }).click();
+  await m.waitForSelector('.celebrate:has-text("PHASE CLEAR")');
+  await m.waitForTimeout(600);
+  await m.screenshot({ path: path.join(outDir, '9_celebrate.png') });
 
   // メンバー表にいない人
   const s = await open('stranger@example.com', 390);

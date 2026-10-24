@@ -143,7 +143,8 @@ function readProgress_(traineeName) {
       kind: r['種類'],
       done: r['完了'] === true,
       by: r['チェックした人'] || '',
-      at: fmtDate_(r['日時'])
+      at: fmtDate_(r['日時']),
+      day: fmtDay_(r['日時'])
     };
   });
 }
@@ -154,13 +155,56 @@ function requiredVideoIds_() {
     .map(function (m) { return String(m['ID']); });
 }
 
-function watchedByEmail_() {
-  var map = {};
+/** eラーニング記録とロープレ記録から、人ごとの視聴済み動画と活動日を集める */
+function activityIndex_() {
+  var byEmail = {};
   readTable_(sheet_(SHEET.ELEARNING)).forEach(function (r) {
     var email = String(r['メール']).toLowerCase();
-    (map[email] = map[email] || {})[String(r['資料ID'])] = true;
+    var a = byEmail[email] = byEmail[email] || { ids: {}, days: [] };
+    a.ids[String(r['資料ID'])] = true;
+    a.days.push(fmtDay_(r['日時']));
   });
-  return map;
+  var byName = {};
+  readTable_(sheet_(SHEET.ROLEPLAY)).forEach(function (r) {
+    var a = byName[r['話し手']] = byName[r['話し手']] || { count: 0, days: [] };
+    a.count++;
+    a.days.push(fmtDay_(r['登録日時'] || r['日付']));
+  });
+  return { byEmail: byEmail, byName: byName };
+}
+
+/**
+ * やる気の指標。ポイントはタスク10・卒業条件50・動画5・ロープレ（話し手）20。
+ * 連続日数は今日（今日まだなら昨日）からさかのぼって、何かしら記録がある日が続いた日数。
+ */
+function stats_(rows, act) {
+  var tasksDone = rows.filter(function (r) { return r.kind === 'タスク' && r.done; }).length;
+  var goalsDone = rows.filter(function (r) { return r.kind === '卒業条件' && r.done; }).length;
+  var days = rows.filter(function (r) { return r.done && r.day; }).map(function (r) { return r.day; })
+    .concat(act.e.days, act.rp.days).filter(function (d) { return d; });
+  var set = {};
+  days.forEach(function (d) { set[d] = true; });
+  var day = function (offset) {
+    return Utilities.formatDate(new Date(Date.now() - offset * 86400000), 'Asia/Tokyo', 'yyyy/MM/dd');
+  };
+  var start = set[day(0)] ? 0 : 1;
+  var streak = 0;
+  while (set[day(start + streak)]) streak++;
+  var weekStart = day(6);
+  return {
+    points: tasksDone * 10 + goalsDone * 50 + Object.keys(act.e.ids).length * 5 + act.rp.count * 20,
+    streak: streak,
+    week: days.filter(function (d) { return d >= weekStart; }).length,
+    videos: Object.keys(act.e.ids).length,
+    roleplays: act.rp.count
+  };
+}
+
+function activityOf_(index, member) {
+  return {
+    e: index.byEmail[member.email] || { ids: {}, days: [] },
+    rp: index.byName[member.name] || { count: 0, days: [] }
+  };
 }
 
 /** 全研修生の進捗サマリー */
@@ -169,14 +213,14 @@ function summaries_(members) {
   var phaseOf = {};
   tasks.forEach(function (t) { phaseOf[String(t['ID'])] = t['フェーズ']; });
   var required = requiredVideoIds_();
-  var watched = watchedByEmail_();
+  var index = activityIndex_();
   return members.filter(function (m) { return m.role === ROLE.TRAINEE && m.status !== '退職'; }).map(function (m) {
     var rows = readProgress_(m.name);
     var done = rows.filter(function (r) { return r.done; });
     var goals = rows.filter(function (r) { return r.kind === '卒業条件'; });
     var nextTask = rows.filter(function (r) { return r.kind === 'タスク' && !r.done; })[0];
     var last = done.map(function (r) { return r.at; }).sort().pop() || '';
-    var w = watched[m.email] || {};
+    var act = activityOf_(index, m);
     return {
       name: m.name,
       joined: m.joined,
@@ -186,8 +230,9 @@ function summaries_(members) {
       goalsTotal: goals.length,
       phase: nextTask ? phaseOf[nextTask.id] : (rows.length ? 'タスク完了' : '進捗シートなし'),
       lastUpdate: last,
-      videosWatched: required.filter(function (id) { return w[id]; }).length,
-      videosRequired: required.length
+      videosWatched: required.filter(function (id) { return act.e.ids[id]; }).length,
+      videosRequired: required.length,
+      stats: stats_(rows, act)
     };
   });
 }
@@ -225,8 +270,9 @@ function api_getProgress(traineeName) {
   currentUser_();
   var trainee = members_().filter(function (m) { return m.name === traineeName; })[0];
   if (!trainee) throw new Error('研修生「' + traineeName + '」が見つかりません。');
-  var watched = watchedByEmail_()[trainee.email] || {};
-  return { name: traineeName, rows: readProgress_(traineeName), watched: Object.keys(watched) };
+  var rows = readProgress_(traineeName);
+  var act = activityOf_(activityIndex_(), trainee);
+  return { name: traineeName, rows: rows, watched: Object.keys(act.e.ids), stats: stats_(rows, act) };
 }
 
 /** チェックの付け外し。研修生は自分の分だけ、教育担当・管理者は全員分を操作できる */
