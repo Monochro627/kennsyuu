@@ -848,7 +848,7 @@ function viewManuals() {
       append(grid, h('button', { class: 'man', onclick: function () { openManual(m); } },
         svg(icon(m.kind === 'スプレッド' ? 'sheet' : manualIcon(m.title))),
         h('b', { text: m.title }),
-        h('span', { class: 'k pill', text: m.kind === 'スプレッド' ? 'SHEET' : 'MANUAL' })));
+        h('span', { class: 'k pill', text: isSiteUrl(m.url) ? 'SITE ↗' : m.kind === 'スプレッド' ? 'SHEET' : 'MANUAL' })));
     });
   };
   input.addEventListener('input', draw);
@@ -857,7 +857,10 @@ function viewManuals() {
     h('div', { style: 'font-weight:700;font-size:1.2rem;margin:6px 0 12px', text: 'マニュアル' }), input), grid);
   return wrap;
 }
+function isSiteUrl(url) { return /^https:\/\/sites\.google\.com\//.test(String(url)); }
 function openManual(m) {
+  // Googleサイトのページは埋め込めないので別タブで開く
+  if (isSiteUrl(m.url)) { window.open(m.url, '_blank', 'noopener'); return; }
   var root = document.getElementById('modal-root');
   root.innerHTML = '';
   document.body.classList.add('reading');
