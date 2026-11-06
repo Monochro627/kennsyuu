@@ -6,6 +6,7 @@ const vm = require('vm');
 const assert = require('assert');
 const { chromium } = require('playwright');
 const { createContext } = require('./fake_gas');
+const examSheets = require('./exam_fixture');
 
 const materials = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 const outDir = process.argv[3];
@@ -20,7 +21,7 @@ const flowRows = [
   ['※ひたすらロープレ', 'ロールプレイング', '①ヒアリング', false],
   ['', 'ロールプレイング', '②物件提案', false, 'メラビアンも練習のため、動画撮影後モニターに移す'],
 ];
-const ctx = createContext({ userEmail: 'owner@monochro-inc.com', sourceFlowRows: flowRows, siteImportRows: materials, docExportHtml });
+const ctx = createContext({ userEmail: 'owner@monochro-inc.com', sourceFlowRows: flowRows, siteImportRows: materials, docExportHtml, examSheets });
 const run = (code) => vm.runInContext(code, ctx);
 run('setup()');
 run(`api_addMember({name:'小田天誠', email:'t.oda@monochro-inc.com', role:'研修生', joined:'2026/10/01'})`);
@@ -126,6 +127,37 @@ window.google = { script: { get run() {
   await a.click('nav.tabs button:has-text("卒業フロー")');
   await a.waitForSelector('text=NOW');
   await a.screenshot({ path: path.join(outDir, '8_home_admin_pc.png'), fullPage: true });
+
+  // ロープレ試験：研修生が実施 → 教育担当が評価 → 結果
+  await p.click('nav.tabs button:has-text("ロープレ")');
+  await p.click('button:has-text("試験を実施")');
+  await p.waitForSelector('.modal select');
+  await p.locator('.chk-list label', { hasText: '伊藤竣哉' }).click();
+  await p.screenshot({ path: path.join(outDir, '10_exam_start.png') });
+  await p.click('.modal button:has-text("実施する")');
+  await p.waitForSelector('text=評価中 0/1');
+
+  const t = await open('ito@monochro-inc.com', 390);
+  await t.waitForSelector('nav.tabs .tab-dot');
+  await t.click('nav.tabs button:has-text("ロープレ")');
+  await t.click('.ses:has-text("評価する")');
+  await t.waitForSelector('.exam-item');
+  assert.strictEqual(await t.locator('.exam-item').count(), 4);
+  await t.locator('.exam-item').nth(0).locator('.scores button').nth(7).click();
+  await t.locator('.exam-item').nth(1).locator('.scores button').nth(6).click();
+  await t.locator('.exam-item').nth(2).locator('.scores button').nth(15).click();
+  await t.locator('.exam-item').nth(3).locator('input.why').fill('2択が使えていた');
+  await t.click('.pf button:has-text("合格")');
+  await t.fill('.reader textarea >> nth=0', '笑顔と間の取り方が良い');
+  await t.waitForSelector('.total-bar b:text-is("31")');
+  await t.screenshot({ path: path.join(outDir, '11_exam_sheet.png'), fullPage: true });
+  await t.click('.total-bar button:has-text("提出する")');
+  await t.waitForSelector('.celebrate:has-text("PASS")');
+  await t.click('.celebrate');
+  await t.click('.ses:has-text("小田天誠")');
+  await t.waitForSelector('table.res');
+  await t.screenshot({ path: path.join(outDir, '12_exam_result.png'), fullPage: true });
+  assert.ok(JSON.parse(JSON.stringify(run(`api_getProgress('小田天誠')`))).examsPassed.includes('EX01'));
 
   // 宮川さんが入社前フェーズを全部終えると PHASE CLEAR の演出
   const m = await open('miyagawa@monochro-inc.com', 390);

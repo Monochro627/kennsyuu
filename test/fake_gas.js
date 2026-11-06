@@ -71,7 +71,7 @@ class FakeSpreadsheet {
   setSpreadsheetTimeZone() {}
 }
 
-function createContext({ userEmail, sourceFlowRows, siteImportRows, docExportHtml }) {
+function createContext({ userEmail, sourceFlowRows, siteImportRows, docExportHtml, examSheets }) {
   const store = {};
   const books = {};
   let seq = 0;
@@ -80,6 +80,12 @@ function createContext({ userEmail, sourceFlowRows, siteImportRows, docExportHtm
   sourceFlowRows.forEach((r) => flow.sheets[0].appendRow(r));
   books.SRC = flow;
   books['1l7mVwKFQkYglFTEDeHB-UfazxIj_GHTK14BfsjyW92c'] = flow;
+  // ロープレ評価シートの元スプレッド（【試験①】〜）
+  const examBook = new FakeSpreadsheet('EXSRC', 'roleplay');
+  examBook.sheets = [];
+  Object.entries(examSheets || {}).forEach(([name, rows]) => { const sh = examBook.insertSheet(name); rows.forEach((r) => sh.appendRow(r)); });
+  examBook.insertSheet('アウトトーク集').appendRow(['関係ないシート']);
+  books['1R4jsSl-KLH2oclLekjZtfiHJJSjjv93JrfCAFyvb8tc'] = examBook;
   const folder = (id) => ({
     getId: () => id,
     createFolder: () => folder('F' + ++seq),
@@ -127,7 +133,7 @@ function createContext({ userEmail, sourceFlowRows, siteImportRows, docExportHtm
     UrlFetchApp: { fetch: () => ({ getResponseCode: () => 200, getContentText: () => docExportHtml || '<html><body><p>本文</p></body></html>' }) },
   };
   vm.createContext(ctx);
-  for (const f of ['SiteImport.js', 'Manual.js', 'Code.js', 'Setup.js']) {
+  for (const f of ['SiteImport.js', 'Manual.js', 'Exam.js', 'Code.js', 'Setup.js']) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '../gas', f), 'utf8'), ctx, { filename: f });
   }
   // サイトの取り込みはテスト用の行に差し替える

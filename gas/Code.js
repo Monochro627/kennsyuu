@@ -157,6 +157,7 @@ function requiredVideoIds_() {
 
 /** eラーニング記録とロープレ記録から、人ごとの視聴済み動画と活動日を集める */
 function activityIndex_() {
+  ensureExamSheets_();
   var byEmail = {};
   readTable_(sheet_(SHEET.ELEARNING)).forEach(function (r) {
     var email = String(r['メール']).toLowerCase();
@@ -170,7 +171,7 @@ function activityIndex_() {
     a.count++;
     a.days.push(fmtDay_(r['登録日時'] || r['日付']));
   });
-  return { byEmail: byEmail, byName: byName };
+  return { byEmail: byEmail, byName: byName, passed: passedExamsByTrainee_() };
 }
 
 /**
@@ -192,18 +193,20 @@ function stats_(rows, act) {
   while (set[day(start + streak)]) streak++;
   var weekStart = day(6);
   return {
-    points: tasksDone * 10 + goalsDone * 50 + Object.keys(act.e.ids).length * 5 + act.rp.count * 20,
+    points: tasksDone * 10 + goalsDone * 50 + Object.keys(act.e.ids).length * 5 + act.rp.count * 20 + act.exams.length * 30,
     streak: streak,
     week: days.filter(function (d) { return d >= weekStart; }).length,
     videos: Object.keys(act.e.ids).length,
-    roleplays: act.rp.count
+    roleplays: act.rp.count,
+    exams: act.exams.length
   };
 }
 
 function activityOf_(index, member) {
   return {
     e: index.byEmail[member.email] || { ids: {}, days: [] },
-    rp: index.byName[member.name] || { count: 0, days: [] }
+    rp: index.byName[member.name] || { count: 0, days: [] },
+    exams: Object.keys(index.passed[member.name] || {})
   };
 }
 
@@ -232,6 +235,7 @@ function summaries_(members) {
       lastUpdate: last,
       videosWatched: required.filter(function (id) { return act.e.ids[id]; }).length,
       videosRequired: required.length,
+      examsPassed: act.exams,
       stats: stats_(rows, act)
     };
   });
@@ -242,6 +246,7 @@ function summaries_(members) {
 /** 画面の初期表示に必要なデータをまとめて返す */
 function api_bootstrap() {
   var me = currentUser_();
+  ensureExamSheets_();
   var members = members_();
   var goals = readTable_(sheet_(SHEET.GOALS)).map(function (g) {
     return { id: String(g['ID']), title: g['条件'], detail: g['詳細'] || '' };
@@ -255,8 +260,14 @@ function api_bootstrap() {
       url: m['URL'], required: m['必須'] === '必須', note: m['補足'] || '', order: Number(m['並び順']) || 0
     };
   }).sort(function (a, b) { return a.order - b.order; });
+  var sessions = examSessions_();
   return {
     me: me,
+    exams: exams_(),
+    pendingExams: sessions.filter(function (x) {
+      return x.status !== '完了' && x.evaluators.indexOf(me.name) >= 0 &&
+        !x.evaluations.some(function (e) { return e.evaluator === me.name; });
+    }).length,
     members: members.map(function (m) { return { name: m.name, role: m.role, joined: m.joined, status: m.status }; }),
     goals: goals,
     tasks: tasks,
@@ -272,7 +283,7 @@ function api_getProgress(traineeName) {
   if (!trainee) throw new Error('研修生「' + traineeName + '」が見つかりません。');
   var rows = readProgress_(traineeName);
   var act = activityOf_(activityIndex_(), trainee);
-  return { name: traineeName, rows: rows, watched: Object.keys(act.e.ids), stats: stats_(rows, act) };
+  return { name: traineeName, rows: rows, watched: Object.keys(act.e.ids), examsPassed: act.exams, stats: stats_(rows, act) };
 }
 
 /** チェックの付け外し。研修生は自分の分だけ、教育担当・管理者は全員分を操作できる */

@@ -235,6 +235,36 @@
   .rp .date span { font-size: .6rem; letter-spacing: .15em; color: var(--mute); }
   .rp .fb { margin-top: 6px; padding: 10px 12px; background: var(--paper); border-radius: 10px; font-size: .86rem; white-space: pre-wrap; }
 
+  /* ロープレ試験 */
+  .exam-item { padding: 14px 0; border-top: 1px solid var(--line); }
+  .exam-item:first-child { border-top: 0; }
+  .exam-item .q { font-weight: 500; margin-bottom: 8px; line-height: 1.6; }
+  .exam-item .q .pill { margin-left: 6px; }
+  .scores { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; }
+  .scores button { border: 1px solid var(--line); background: #fff; border-radius: 9px; padding: 8px 0; font: 700 .85rem var(--en); cursor: pointer; color: var(--ink); }
+  .scores button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .scores button.in { background: var(--g6); border-color: var(--g6); }
+  .exam-item input.why { margin-top: 8px; font-size: .85rem; padding: 8px 10px; }
+  .pf { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .pf button { border: 1.5px solid var(--ink); background: #fff; border-radius: 14px; padding: 14px; font: 800 1rem var(--jp); cursor: pointer; }
+  .pf button.on { background: var(--ink); color: #fff; }
+  .total-bar { position: sticky; bottom: 0; background: rgba(13,13,13,.96); color: #fff; padding: 12px 16px; display: flex; align-items: center; gap: 12px; border-radius: 16px 16px 0 0; margin-top: 18px; }
+  .total-bar b { font: 800 1.4rem var(--en); }
+  .chk-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+  .chk-list label { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 99px; padding: 6px 12px; font-size: .85rem; cursor: pointer; }
+  .chk-list input { width: auto; accent-color: var(--ink); }
+  .ses { display: flex; gap: 12px; align-items: center; padding: 12px 0; border-top: 1px solid var(--line); cursor: pointer; }
+  .ses:first-child { border-top: 0; }
+  .ses .no { width: 40px; height: 40px; border-radius: 10px; background: var(--ink); color: #fff; display: grid; place-items: center; font: 800 1rem var(--en); flex: none; }
+  .ses .t { flex: 1; min-width: 0; }
+  .exam-chips { display: inline-flex; gap: 3px; margin-left: 6px; vertical-align: middle; }
+  .exam-chips i { width: 18px; height: 18px; border-radius: 50%; border: 1.3px solid var(--g5); font: 800 .55rem/15px var(--en); text-align: center; font-style: normal; color: var(--g4); }
+  .exam-chips i.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+  table.res { width: 100%; border-collapse: collapse; font-size: .85rem; }
+  table.res th, table.res td { border-bottom: 1px solid var(--line); padding: 8px 6px; text-align: center; vertical-align: top; }
+  table.res td:first-child, table.res th:first-child { text-align: left; }
+  .tab-dot { display: inline-grid; place-items: center; min-width: 17px; height: 17px; border-radius: 99px; background: var(--ink); color: #fff; font: 800 .6rem var(--en); padding: 0 4px; margin-left: 2px; }
+
   /* モーダル */
   .modal { position: fixed; inset: 0; z-index: 30; background: rgba(13,13,13,.6); display: flex; align-items: center; justify-content: center; padding: 12px; animation: fade .2s; }
   .modal .panel { background: #fff; border-radius: 20px; width: min(860px, 100%); max-height: 94vh; overflow: auto; animation: rise .25s cubic-bezier(.2,.8,.2,1); }
@@ -309,7 +339,7 @@ var STAGES = [
   { name: 'SLATE', min: 60, fill: '#8f8f8f' }, { name: 'SILVER', min: 75, fill: '#b8b8b8' },
   { name: 'PEARL', min: 90, fill: '#dcdcdc' }, { name: 'WHITE', min: 100, fill: '#ffffff' }
 ];
-var PT = { task: 10, goal: 50, video: 5, roleplay: 20 };
+var PT = { task: 10, goal: 50, video: 5, roleplay: 20, exam: 30 };
 var ROLEPLAY_TOPICS = ['【試験①】カウンセリング面談', '【試験②】ヒアリング物件提案', '【試験③】初期費用＆申込後の流れ',
   '【試験④】アウトトーク', '【試験⑤】（紹介）初回LINE～初回電話まで', '【試験⑥】バリュートーク', '【試験⑦】マイストーリー',
   'ヒアリング', '物件提案', 'カウンセリング面談', 'LINEロープレ', 'アポ', 'マイストーリー', '業界説明', 'コンセプトマップ',
@@ -489,7 +519,8 @@ function renderTabs() {
   var nav = document.getElementById('tabs');
   nav.innerHTML = '';
   TABS.filter(function (t) { return !t.staff || isStaff(); }).forEach(function (t) {
-    nav.appendChild(h('button', { class: S.tab === t.id ? 'active' : '', onclick: function () { go(t.id); } }, svg(icon(t.id)), t.label));
+    var dot = t.id === 'roleplay' && S.data.pendingExams ? h('span', { class: 'tab-dot', text: S.data.pendingExams }) : null;
+    nav.appendChild(h('button', { class: S.tab === t.id ? 'active' : '', onclick: function () { go(t.id); } }, svg(icon(t.id)), h('span', null, t.label, dot)));
   });
 }
 function go(tab) {
@@ -553,6 +584,8 @@ var BADGES = [
   { g: '★', name: '必須動画コンプ', ok: function (s) { return s.reqTotal && s.reqDone === s.reqTotal; } },
   { g: 'RP', name: '初ロープレ', ok: function (s) { return s.stats.roleplays >= 1; } },
   { g: 'RP10', name: 'ロープレ10回', ok: function (s) { return s.stats.roleplays >= 10; } },
+  { g: 'EX', name: '試験初合格', ok: function (s) { return s.stats.exams >= 1; } },
+  { g: 'EX7', name: '試験全合格', ok: function (s) { return S.data.exams.length && s.stats.exams >= S.data.exams.length; } },
   { g: '3D', name: '3日連続', ok: function (s) { return s.stats.streak >= 3; } },
   { g: '7D', name: '7日連続', ok: function (s) { return s.stats.streak >= 7; } },
   { g: 'RA', name: 'ルームアドバイザー', ok: function (s) { return s.goalsTotal && s.goalsDone === s.goalsTotal; } }
@@ -634,7 +667,8 @@ function viewHome() {
   // 卒業条件
   var goalBox = h('div', { class: 'card' }, h('div', { class: 'eyebrow', text: 'Graduation' }), h('h2', { class: 'title', text: 'ルームアドバイザー卒業条件' }));
   S.data.goals.forEach(function (g, i) {
-    var extra = g.id === 'G02' ? h('span', { class: 'pill', style: 'margin-left:6px', text: snap.reqDone + ' / ' + snap.reqTotal }) : null;
+    var extra = g.id === 'G02' ? h('span', { class: 'pill', style: 'margin-left:6px', text: snap.reqDone + ' / ' + snap.reqTotal }) :
+      g.id === 'G07' ? examChips(S.progress.examsPassed || []) : null;
     append(goalBox, checkRow(g.id, g.title, g.detail, extra, st[g.id], editable, ('0' + (i + 1)).slice(-2), PT.goal));
   });
   append(wrap, goalBox);
@@ -969,6 +1003,7 @@ function viewRoleplay() {
   append(wrap, h('div', { class: 'card ink dots' }, h('div', { class: 'eyebrow', text: 'Role Play' }),
     h('div', { style: 'font-weight:700;font-size:1.2rem;margin:6px 0 4px', text: 'ロープレ' }),
     h('div', { class: 'small', style: 'opacity:.7', text: '話し手・聞き手・内容・フィードバックを残して、成長を見える化。録音も一緒に保存できます。' })));
+  append(wrap, examSection());
   append(wrap, h('details', { class: 'card' },
     h('summary', { style: 'cursor:pointer;list-style:none' }, h('strong', { text: '＋ ロープレを記録する' })),
     h('div', { style: 'margin-top:14px' },
@@ -1006,6 +1041,211 @@ function viewRoleplay() {
   append(wrap, listCard);
   return wrap;
 }
+// ---------- ロープレ試験 ----------
+function examNo(name) { var m = String(name).match(/【試験(.)】/); return m ? m[1] : '・'; }
+function examChips(passed) {
+  return h('span', { class: 'exam-chips', title: '合格した試験' }, S.data.exams.map(function (e) {
+    return h('i', { class: passed.indexOf(e.id) >= 0 ? 'on' : '', text: examNo(e.name) });
+  }));
+}
+function loadExamSessions() {
+  if (S.loadingExams) return;
+  S.loadingExams = true;
+  call('api_listExamSessions').then(function (r) {
+    S.loadingExams = false;
+    S.examSessions = r;
+    S.data.pendingExams = r.filter(isMyPending).length;
+    renderTabs();
+    if (S.tab === 'roleplay') render();
+  }).catch(function (e) { S.loadingExams = false; toast(errMsg(e), true); });
+}
+function isMyPending(x) { return x.status !== '完了' && x.evaluators.indexOf(S.data.me.name) >= 0 && x.submitted.indexOf(S.data.me.name) < 0; }
+function examSection() {
+  var card = h('div', { class: 'card' }, h('div', { class: 'row' },
+    h('div', null, h('div', { class: 'eyebrow', text: 'Exam' }), h('h2', { class: 'title', style: 'margin:4px 0 0', text: 'ロープレ試験' })),
+    h('div', { class: 'spacer' }), h('button', { class: 'btn', text: '＋ 試験を実施', onclick: openExamStart })));
+  if (!S.examSessions) { loadExamSessions(); append(card, h('p', { class: 'loading', text: 'LOADING' })); return card; }
+  var mine = S.examSessions.filter(isMyPending);
+  if (mine.length) {
+    append(card, h('div', { class: 'eyebrow', style: 'margin:16px 0 4px', text: 'Waiting For You｜あなたの評価待ち' }));
+    mine.forEach(function (x) {
+      append(card, h('div', { class: 'ses', onclick: function () { openExamEvaluate(x.id); } }, h('div', { class: 'no', text: examNo(x.examName) }),
+        h('div', { class: 't' }, h('strong', { text: x.examName.replace(/【試験.】/, '') }), h('div', { class: 'small muted', text: '実践者 ' + x.trainee + '｜' + x.at })),
+        h('button', { class: 'btn', text: '評価する' })));
+    });
+  }
+  append(card, h('div', { class: 'eyebrow', style: 'margin:16px 0 4px', text: 'Records｜試験の記録' }));
+  var list = S.examSessions.filter(function (x) { return !S.rpFilter || x.trainee === S.rpFilter || x.evaluators.indexOf(S.rpFilter) >= 0; }).slice(0, 30);
+  if (!list.length) append(card, h('p', { class: 'small muted', text: 'まだ試験の記録がありません。「試験を実施」から始めましょう。' }));
+  list.forEach(function (x) {
+    var st = x.status === '完了' ? h('span', { class: 'pill' + (x.result === '合格' ? ' solid' : ''), text: x.result === '合格' ? 'PASS' : 'FAIL' })
+      : h('span', { class: 'pill jp', text: '評価中 ' + x.submitted.length + '/' + x.evaluators.length });
+    append(card, h('div', { class: 'ses', onclick: function () { openExamResult(x.id); } }, h('div', { class: 'no', text: examNo(x.examName) }),
+      h('div', { class: 't' }, h('strong', { text: x.trainee }), h('div', { class: 'small muted', text: x.examName.replace(/【試験.】/, '') + '｜' + x.at + (x.average !== null ? '｜平均 ' + x.average + '/' + x.max : '') })), st));
+  });
+  return card;
+}
+function openExamStart() {
+  var isTrainee = S.data.me.role === '研修生';
+  var exam = h('select', null, S.data.exams.map(function (e) { return h('option', { value: e.id, text: e.name }); }));
+  var trainee = h('select', null, trainees().map(function (t) { var o = h('option', { value: t.name, text: t.name }); if (t.name === S.data.me.name) o.selected = true; return o; }));
+  var setting = h('input', { placeholder: '任意（例：3）' });
+  var evalBox = h('div', { class: 'chk-list' });
+  var drawEvaluators = function () {
+    var checked = Array.prototype.map.call(evalBox.querySelectorAll('input:checked'), function (i) { return i.value; });
+    evalBox.innerHTML = '';
+    S.data.members.filter(function (m) { return m.name !== trainee.value && m.status !== '退職'; }).forEach(function (m) {
+      var cb = h('input', { type: 'checkbox', value: m.name });
+      cb.checked = checked.indexOf(m.name) >= 0 || (!isTrainee && m.name === S.data.me.name && !checked.length);
+      append(evalBox, h('label', null, cb, m.name));
+    });
+  };
+  trainee.addEventListener('change', drawEvaluators);
+  drawEvaluators();
+  var now = new Date();
+  var btn = h('button', { class: 'btn', text: '実施する' });
+  btn.addEventListener('click', function () {
+    var evaluators = Array.prototype.map.call(evalBox.querySelectorAll('input:checked'), function (i) { return i.value; });
+    btn.disabled = true;
+    call('api_createExamSession', { examId: exam.value, trainee: trainee.value, evaluators: evaluators, settingNo: setting.value }).then(function () {
+      toast('試験を開始しました。評価者の画面に評価シートが届きます');
+      closeModal();
+      S.examSessions = null;
+      render();
+    }).catch(function (e) { btn.disabled = false; toast(errMsg(e), true); });
+  });
+  openModal('ロープレ試験を実施', [
+    h('p', { class: 'small muted', text: '実施日時は「実施する」を押した時点（' + now.getFullYear() + '/' + (now.getMonth() + 1) + '/' + now.getDate() + ' ' + now.getHours() + ':' + ('0' + now.getMinutes()).slice(-2) + '）で自動で入ります。' }),
+    h('label', { class: 'field' }, '試験', exam),
+    h('div', { class: 'grid2' }, h('label', { class: 'field' }, '実践者', trainee), h('label', { class: 'field' }, 'ロープレ設定No.', setting)),
+    h('div', { class: 'field' }, '評価者（複数選べます）', evalBox),
+    h('div', { style: 'margin-top:14px' }, btn)]);
+}
+function examById(id) { return S.data.exams.filter(function (e) { return e.id === id; })[0]; }
+function openReader(title, coverBits) {
+  var root = document.getElementById('modal-root');
+  root.innerHTML = '';
+  document.body.classList.add('reading');
+  var body = h('div', { class: 'loading', text: 'LOADING' });
+  var reader = h('div', { class: 'reader' },
+    h('div', { class: 'bar-top' }, h('button', { text: '← 戻る', onclick: closeModal }), h('strong', { text: title })),
+    h('div', { class: 'cover dots' }, h('div', { class: 'wrap' }, coverBits)), body);
+  root.appendChild(reader);
+  return body;
+}
+/** 評価シート。点数は項目ごとのボタン（1〜10、20点満点の項目は1〜20） */
+function openExamEvaluate(sessionId) {
+  var x = (S.examSessions || []).filter(function (s) { return s.id === sessionId; })[0];
+  var body = openReader(x ? x.examName : 'ロープレ試験', [h('div', { class: 'eyebrow', text: 'Evaluation Sheet' }), h('h1', { text: x ? x.examName : '' }),
+    x ? h('div', { class: 'row' }, h('span', { class: 'pill', style: 'color:#fff;border-color:rgba(255,255,255,.3)', text: '実践者 ' + x.trainee }),
+      h('span', { class: 'pill', style: 'color:#fff;border-color:rgba(255,255,255,.3)', text: x.at }),
+      x.settingNo ? h('span', { class: 'pill', style: 'color:#fff;border-color:rgba(255,255,255,.3)', text: '設定No.' + x.settingNo }) : null) : null]);
+  call('api_getExamSession', sessionId).then(function (d) {
+    var exam = examById(d.examId);
+    var prev = d.evaluations.filter(function (e) { return e.evaluator === S.data.me.name; })[0] || { scores: {}, comments: {} };
+    var scores = {};
+    Object.keys(prev.scores).forEach(function (k) { scores[k] = prev.scores[k]; });
+    var pass = prev.evaluator ? prev.pass : null;
+    var totalEl = h('b', { text: '0' });
+    var update = function () {
+      var t = 0;
+      exam.items.forEach(function (it) { if (it.max && scores[it.no]) t += scores[it.no]; });
+      totalEl.textContent = t;
+    };
+    var whys = {};
+    var items = exam.items.map(function (it) {
+      var why = h('input', { class: 'why', placeholder: it.max ? '点数の根拠（任意）' : '気づいたこと（参考項目・点数なし）', value: prev.comments[it.no] || '' });
+      whys[it.no] = why;
+      var grid = null;
+      if (it.max) {
+        grid = h('div', { class: 'scores' });
+        var paint = function () {
+          Array.prototype.forEach.call(grid.children, function (b, i) {
+            b.className = (i + 1) === scores[it.no] ? 'on' : (scores[it.no] && i + 1 < scores[it.no] ? 'in' : '');
+          });
+        };
+        for (var v = 1; v <= it.max; v++) {
+          (function (val) { append(grid, h('button', { type: 'button', text: val, onclick: function () { scores[it.no] = val; paint(); update(); } })); })(v);
+        }
+        paint();
+      }
+      return h('div', { class: 'exam-item' }, h('div', { class: 'q' }, it.text,
+        h('span', { class: 'pill' + (it.max === 20 ? ' solid' : ''), text: it.max ? '/' + it.max : '参考' })), grid, why);
+    });
+    var pfPass = h('button', { type: 'button', text: '合格' });
+    var pfFail = h('button', { type: 'button', text: '不合格' });
+    var paintPf = function () { pfPass.className = pass === true ? 'on' : ''; pfFail.className = pass === false ? 'on' : ''; };
+    pfPass.addEventListener('click', function () { pass = true; paintPf(); });
+    pfFail.addEventListener('click', function () { pass = false; paintPf(); });
+    paintPf();
+    var good = h('textarea', { placeholder: '良かった点' });
+    good.value = prev.good || '';
+    var improve = h('textarea', { placeholder: '改善した方がよい点' });
+    improve.value = prev.improve || '';
+    var btn = h('button', { class: 'btn', style: 'margin-left:auto', text: prev.evaluator ? '出し直す' : '提出する' });
+    btn.addEventListener('click', function () {
+      var comments = {};
+      Object.keys(whys).forEach(function (k) { if (whys[k].value.trim()) comments[k] = whys[k].value.trim(); });
+      btn.disabled = true;
+      call('api_submitExamEvaluation', sessionId, { scores: scores, comments: comments, pass: pass, good: good.value, improve: improve.value }).then(function (r) {
+        closeModal();
+        S.examSessions = null;
+        if (r.result) celebrate(r.result === '合格' ? 'PASS' : 'FINISH', d.trainee + ' さんの判定：' + r.result);
+        else toast('評価を提出しました');
+        render();
+      }).catch(function (e) { btn.disabled = false; toast(errMsg(e), true); });
+    });
+    body.className = '';
+    body.textContent = '';
+    update();
+    append(body, h('div', { class: 'layout', style: 'grid-template-columns:1fr;max-width:760px' }, h('div', null,
+      exam.guide ? h('details', { class: 'card principles' }, h('summary', null, h('span', { class: 'eyebrow', text: 'Guide' }), h('strong', { text: '評価補足' })),
+        h('p', { class: 'small', style: 'white-space:pre-wrap', text: exam.guide })) : null,
+      h('div', { class: 'card' }, h('div', { class: 'eyebrow', text: 'Check Points' }), h('h2', { class: 'title', text: 'チェックポイント' }), items),
+      h('div', { class: 'card' }, h('div', { class: 'eyebrow', text: 'Result' }), h('h2', { class: 'title', text: '試験合否' }), h('div', { class: 'pf' }, pfPass, pfFail)),
+      h('div', { class: 'card' }, h('div', { class: 'eyebrow', text: 'Feedback' }), h('h2', { class: 'title', text: '気づいた点' }),
+        h('label', { class: 'field' }, '良かった点', good), h('label', { class: 'field' }, '改善した方がよい点', improve)),
+      h('div', { class: 'total-bar' }, h('span', { class: 'eyebrow', style: 'color:rgba(255,255,255,.6)', text: 'Total' }), totalEl, h('span', { class: 'small', style: 'opacity:.6', text: '/ ' + exam.max }), btn))));
+  }).catch(function (e) { body.className = 'empty'; body.textContent = errMsg(e); });
+}
+/** 試験の結果。評価者ごとの点数を並べ、項目ごとの平均を出す */
+function openExamResult(sessionId) {
+  var x = (S.examSessions || []).filter(function (s) { return s.id === sessionId; })[0];
+  var body = openReader(x ? x.examName : 'ロープレ試験', [h('div', { class: 'eyebrow', text: 'Exam Result' }), h('h1', { text: x ? x.trainee + ' さん｜' + x.examName : '' })]);
+  call('api_getExamSession', sessionId).then(function (d) {
+    var exam = examById(d.examId);
+    body.className = '';
+    body.textContent = '';
+    var evs = d.evaluations;
+    var head = h('tr', null, h('th', { text: '項目' }), evs.map(function (e) { return h('th', { text: e.evaluator }); }), evs.length > 1 ? h('th', { text: '平均' }) : null);
+    var rows = exam.items.filter(function (it) { return it.max; }).map(function (it) {
+      var vals = evs.map(function (e) { return e.scores[it.no]; });
+      var avg = vals.length ? Math.round(vals.reduce(function (a, b) { return a + (b || 0); }, 0) / vals.length * 10) / 10 : '';
+      return h('tr', null, h('td', null, it.text, h('div', { class: 'small muted', text: '/' + it.max })),
+        evs.map(function (e) { return h('td', null, h('b', { text: e.scores[it.no] || '–' }), e.comments[it.no] ? h('div', { class: 'small muted', style: 'text-align:left', text: e.comments[it.no] }) : null); }),
+        evs.length > 1 ? h('td', null, h('b', { text: avg })) : null);
+    });
+    var totals = h('tr', null, h('td', null, h('strong', { text: '合計' })), evs.map(function (e) { return h('td', null, h('b', { text: e.total + '/' + e.max }), h('div', { class: 'small', text: e.pass ? '合格' : '不合格' })); }),
+      evs.length > 1 ? h('td', null, h('b', { text: d.average !== null ? d.average : '' })) : null);
+    var waiting = d.evaluators.filter(function (n) { return d.submitted.indexOf(n) < 0; });
+    append(body, h('div', { class: 'layout', style: 'grid-template-columns:1fr;max-width:860px' }, h('div', null,
+      h('div', { class: 'card ink dots' }, h('div', { class: 'eyebrow', text: d.status === '完了' ? 'Final Result' : 'In Progress' }),
+        h('div', { style: 'font:800 2.4rem/1.1 Montserrat;margin:8px 0', text: d.status === '完了' ? (d.result === '合格' ? 'PASS' : 'FAIL') : evs.length + ' / ' + d.evaluators.length }),
+        h('div', { class: 'small', style: 'opacity:.7', text: d.status === '完了' ? '判定：' + d.result + '（全員合格で合格）｜平均 ' + d.average + ' / ' + d.max + '点' : '評価待ち：' + waiting.join('、') }),
+        h('div', { class: 'small', style: 'opacity:.6', text: '実施 ' + d.at + (d.settingNo ? '｜設定No.' + d.settingNo : '') + '｜評価者 ' + d.evaluators.join('、') })),
+      isMyPending(d) ? h('button', { class: 'btn', style: 'margin-bottom:14px', text: '評価する', onclick: function () { openExamEvaluate(d.id); } }) : null,
+      evs.length ? h('div', { class: 'card', style: 'overflow-x:auto' }, h('div', { class: 'eyebrow', text: 'Scores' }), h('h2', { class: 'title', text: '評価者ごとの点数' }),
+        h('table', { class: 'res' }, head, rows, totals)) : null,
+      evs.map(function (e) {
+        var refs = exam.items.filter(function (it) { return !it.max && e.comments[it.no]; });
+        return h('div', { class: 'card' }, h('div', { class: 'row' }, h('strong', { text: e.evaluator }), h('span', { class: 'pill' + (e.pass ? ' solid' : ''), text: e.pass ? 'PASS' : 'FAIL' }), h('div', { class: 'spacer' }), h('span', { class: 'small muted', text: e.at })),
+          e.good ? h('div', { class: 'fb', text: '良かった点：' + e.good }) : null,
+          e.improve ? h('div', { class: 'fb', text: '改善点：' + e.improve }) : null,
+          refs.map(function (it) { return h('div', { class: 'small muted', style: 'margin-top:6px', text: '参考｜' + it.text + '：' + e.comments[it.no] }); }));
+      }))));
+  }).catch(function (e) { body.className = 'empty'; body.textContent = errMsg(e); });
+}
+
 function readFile(file) {
   if (!file) return Promise.resolve(null);
   return new Promise(function (resolve, reject) {

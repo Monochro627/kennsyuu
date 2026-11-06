@@ -1,6 +1,7 @@
 // サーバー側（Code.js / Setup.js）の動作確認
 const assert = require('assert');
 const { createContext } = require('./fake_gas');
+const examSheets = require('./exam_fixture');
 
 const flowRows = [
   ['', 'カテゴリ', 'タスク', '進捗', 'ポイント'],
@@ -20,7 +21,7 @@ const materials = [
   ['VID-002', 'eラーニング', '⑦契約手続き編', '審査について', '動画', 'https://youtu.be/kcxlu_qepkk', '任意', 'ライフライン変更', '', 2],
   ['MAN-01', 'マニュアル', 'マニュアル', '社内ルールについて', 'ドキュメント', 'https://docs.google.com/document/d/X/edit', '', '', '', 1000],
 ];
-const ctx = createContext({ userEmail: 'owner@monochro-inc.com', sourceFlowRows: flowRows, siteImportRows: materials });
+const ctx = createContext({ userEmail: 'owner@monochro-inc.com', sourceFlowRows: flowRows, siteImportRows: materials, examSheets });
 const run = (code) => { const v = require('vm').runInContext(code, ctx); return v === undefined ? v : JSON.parse(JSON.stringify(v)); };
 const as = (email) => { ctx.state.userEmail = email; };
 
@@ -97,10 +98,56 @@ assert.strictEqual(list[0].topic, '【試験①】カウンセリング面談');
 
 // やる気の指標：タスク1件(10) + 動画1本(5) + ロープレ1回(20)
 const st = run(`api_getProgress('小田天誠')`).stats;
-assert.deepStrictEqual(st, { points: 35, streak: 1, week: 3, videos: 1, roleplays: 1 });
+assert.deepStrictEqual(st, { points: 35, streak: 1, week: 3, videos: 1, roleplays: 1, exams: 0 });
 assert.strictEqual(run('api_bootstrap()').summaries[0].stats.points, 35);
 
-// マニュアルのウェブ表示
+// ロープレ試験：評価シートの読み込み
+as('owner@monochro-inc.com');
+run(`api_addMember({name:'諸本雅広', email:'morimoto@monochro-inc.com', role:'教育担当'})`);
+const exams = run('api_bootstrap()').exams;
+assert.deepStrictEqual(exams.map((e) => e.id + '|' + e.name + '|' + e.max), ['EX01|【試験①】カウンセリング面談|40', 'EX02|【試験②】ヒアリング物件提案|30']);
+assert.deepStrictEqual(exams[0].items.map((i) => i.text + ':' + i.max), ['①メラビアン視覚:10', '②メラビアン聴覚:10', '⑦モノクロ感、モノクロっぽさ（意識）:20', '※優先順位の把握が出来ているか:0']);
+assert.strictEqual(exams[0].subtitle, 'カウンセリング面談（リモート）');
+assert.ok(exams[0].guide.includes('GOALは来社'));
+
+// 研修生が試験を実施（評価者2人）
+as('t.oda@monochro-inc.com');
+assert.throws(() => run(`api_createExamSession({examId:'EX01', trainee:'小田天誠', evaluators:[]})`), /評価者/);
+const ses = run(`api_createExamSession({examId:'EX01', trainee:'小田天誠', evaluators:['伊藤竣哉','諸本雅広','小田天誠'], settingNo:'3'})`);
+let list2 = run('api_listExamSessions()');
+assert.deepStrictEqual(list2[0].evaluators, ['伊藤竣哉', '諸本雅広'], 'trainee removed from evaluators');
+assert.strictEqual(list2[0].status, '評価中');
+// 評価者でない人は提出できない
+assert.throws(() => run(`api_submitExamEvaluation('${ses.id}', {pass:true, scores:{1:5,2:5,3:10}})`), /評価者ではありません/);
+
+as('ito@monochro-inc.com');
+assert.strictEqual(run('api_bootstrap()').pendingExams, 1);
+assert.throws(() => run(`api_submitExamEvaluation('${ses.id}', {pass:true, scores:{1:5,2:5,3:25}})`), /1〜20/);
+assert.throws(() => run(`api_submitExamEvaluation('${ses.id}', {scores:{1:5,2:5,3:10}})`), /合格・不合格/);
+let r = run(`api_submitExamEvaluation('${ses.id}', {pass:false, scores:{1:5,2:6,3:12}, comments:{4:'2択が使えていた'}, good:'笑顔', improve:'結論から'})`);
+assert.deepStrictEqual([r.result, r.total], ['', 23]);
+// 判定前なら出し直せる
+r = run(`api_submitExamEvaluation('${ses.id}', {pass:true, scores:{1:7,2:6,3:15}, good:'笑顔が良い', improve:'結論から'})`);
+assert.deepStrictEqual([r.result, r.total, r.submitted], ['', 28, 1]);
+assert.strictEqual(run('api_bootstrap()').pendingExams, 0);
+
+as('morimoto@monochro-inc.com');
+r = run(`api_submitExamEvaluation('${ses.id}', {pass:true, scores:{1:8,2:8,3:16}})`);
+assert.strictEqual(r.result, '合格');
+const detail = run(`api_getExamSession('${ses.id}')`);
+assert.strictEqual(detail.status, '完了');
+assert.strictEqual(detail.average, 30);
+assert.strictEqual(detail.evaluations.length, 2);
+assert.strictEqual(detail.evaluations.find((e) => e.evaluator === '伊藤竣哉').scores['3'], 15);
+assert.throws(() => run(`api_submitExamEvaluation('${ses.id}', {pass:true, scores:{1:8,2:8,3:16}})`), /判定が出ています/);
+// ロープレ記録にも残り、ポイントに反映（試験合格30 + ロープレ20）
+assert.ok(run('api_listRoleplays()').some((x) => x.topic === '【試験①】カウンセリング面談' && x.focus.includes('合格')));
+const st2 = run(`api_getProgress('小田天誠')`);
+assert.deepStrictEqual(st2.examsPassed, ['EX01']);
+assert.strictEqual(st2.stats.points, 35 + 20 + 30);
+
+// マニュアルのウェブ表示（研修生は編集ボタンなし）
+as('t.oda@monochro-inc.com');
 const man = run(`api_getManual('MAN-01')`);
 assert.ok(man.html.includes('本文'));
 assert.strictEqual(man.canEdit, false);
