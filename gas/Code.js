@@ -13,7 +13,7 @@ var SHEET = {
   ELEARNING: 'eラーニング記録'
 };
 var PROGRESS_PREFIX = '進捗_';
-var PROGRESS_HEADERS = ['ID', '種類', 'フェーズ', 'カテゴリ', '内容', '完了', 'チェックした人', '日時'];
+var PROGRESS_HEADERS = ['ID', '種類', 'フェーズ', 'カテゴリ', '内容', '完了', 'チェックした人', '日時', '実施日'];
 var ROLE = { ADMIN: '管理者', TRAINER: '教育担当', TRAINEE: '研修生' };
 var MAX_UPLOAD_BYTES = 40 * 1024 * 1024;
 
@@ -118,13 +118,7 @@ function createProgressSheet_(traineeName) {
   var ss = db_();
   var name = progressSheetName_(traineeName);
   if (ss.getSheetByName(name)) return ss.getSheetByName(name);
-  var rows = [PROGRESS_HEADERS];
-  readTable_(sheet_(SHEET.GOALS)).forEach(function (g) {
-    rows.push([g['ID'], '卒業条件', '卒業条件', '', g['条件'], false, '', '']);
-  });
-  readTable_(sheet_(SHEET.TASKS)).forEach(function (t) {
-    rows.push([t['ID'], 'タスク', t['フェーズ'], t['カテゴリ'], t['タスク'], false, '', '']);
-  });
+  var rows = [PROGRESS_HEADERS].concat(currentItems_().map(function (it) { return it.slice(0, 5).concat([false, '', '', '']); }));
   var sh = ss.insertSheet(name);
   sh.getRange(1, 1, rows.length, PROGRESS_HEADERS.length).setValues(rows);
   sh.getRange(2, 6, rows.length - 1, 1).insertCheckboxes();
@@ -134,13 +128,16 @@ function createProgressSheet_(traineeName) {
   return sh;
 }
 
-/** 今の卒業条件とタスクマスターにある項目（[ID, 種類, フェーズ, カテゴリ, 内容] の並び） */
+/**
+ * 進捗シートに行を持つ項目（[ID, 種類, フェーズ, カテゴリ, 内容, 扱い] の並び）。
+ * 「ロープレ一覧」「目安」の行は見せるだけなので入れない。
+ */
 function currentItems_() {
   var items = readTable_(sheet_(SHEET.GOALS)).map(function (g) {
-    return [String(g['ID']), '卒業条件', '卒業条件', '', g['条件']];
+    return [String(g['ID']), '卒業条件', '卒業条件', '', g['条件'], ''];
   });
   readTable_(sheet_(SHEET.TASKS)).forEach(function (t) {
-    items.push([String(t['ID']), 'タスク', t['フェーズ'], t['カテゴリ'], t['タスク']]);
+    if (hasProgressRow_(t['扱い'])) items.push([String(t['ID']), 'タスク', t['フェーズ'], t['カテゴリ'], t['タスク'], String(t['扱い'] || '')]);
   });
   return items;
 }
@@ -149,32 +146,41 @@ function currentItems_() {
 function syncProgressSheet_(traineeName) {
   var sh = db_().getSheetByName(progressSheetName_(traineeName));
   if (!sh) return;
+  if (sh.getLastColumn() < PROGRESS_HEADERS.length) sh.getRange(1, 1, 1, PROGRESS_HEADERS.length).setValues([PROGRESS_HEADERS]);
   var have = {};
   readTable_(sh).forEach(function (r) { have[String(r['ID'])] = true; });
   var add = currentItems_().filter(function (it) { return !have[it[0]]; })
-    .map(function (it) { return it.concat([false, '', '']); });
+    .map(function (it) { return it.slice(0, 5).concat([false, '', '', '']); });
   if (!add.length) return;
   var start = sh.getLastRow() + 1;
   sh.getRange(start, 1, add.length, PROGRESS_HEADERS.length).setValues(add);
   sh.getRange(start, 6, add.length, 1).insertCheckboxes();
 }
 
+/** ID → 扱い（今の卒業条件・タスクマスターで進捗を持つ項目だけ） */
+function itemModes_() {
+  var map = {};
+  currentItems_().forEach(function (it) { map[it[0]] = it[5]; });
+  return map;
+}
+
 /** 研修生の進捗。今の卒業条件・タスクマスターにない項目（保留にしたタスクなど）は数えない */
 function readProgress_(traineeName, validIds) {
   var sh = db_().getSheetByName(progressSheetName_(traineeName));
   if (!sh) return [];
-  if (!validIds) {
-    validIds = {};
-    currentItems_().forEach(function (it) { validIds[it[0]] = true; });
-  }
-  return readTable_(sh).filter(function (r) { return validIds[String(r['ID'])]; }).map(function (r) {
+  if (!validIds) validIds = itemModes_();
+  return readTable_(sh).filter(function (r) { return String(r['ID']) in validIds; }).map(function (r) {
+    var mode = validIds[String(r['ID'])];
     return {
       id: String(r['ID']),
       kind: r['種類'],
+      mode: mode,
+      counts: r['種類'] === '卒業条件' || countsForProgress_(mode),
       done: r['完了'] === true,
       by: r['チェックした人'] || '',
       at: fmtDate_(r['日時']),
-      day: fmtDay_(r['日時'])
+      day: fmtDay_(r['日時']),
+      date: fmtDay_(r['実施日'])
     };
   });
 }
@@ -247,10 +253,10 @@ function summaries_(members) {
   tasks.forEach(function (t) { phaseOf[String(t['ID'])] = t['フェーズ']; });
   var required = requiredVideoIds_();
   var index = activityIndex_();
-  var validIds = {};
-  currentItems_().forEach(function (it) { validIds[it[0]] = true; });
+  var validIds = itemModes_();
   return members.filter(function (m) { return m.role === ROLE.TRAINEE && m.status !== '退職'; }).map(function (m) {
-    var rows = readProgress_(m.name, validIds);
+    var all = readProgress_(m.name, validIds);
+    var rows = all.filter(function (r) { return r.counts; });
     var done = rows.filter(function (r) { return r.done; });
     var goals = rows.filter(function (r) { return r.kind === '卒業条件'; });
     var nextTask = rows.filter(function (r) { return r.kind === 'タスク' && !r.done; })[0];
@@ -268,7 +274,7 @@ function summaries_(members) {
       videosWatched: required.filter(function (id) { return act.e.ids[id]; }).length,
       videosRequired: required.length,
       examsPassed: act.exams,
-      stats: stats_(rows, act)
+      stats: stats_(all, act)
     };
   });
 }
@@ -284,7 +290,7 @@ function api_bootstrap() {
     return { id: String(g['ID']), title: g['条件'], detail: g['詳細'] || '' };
   });
   var tasks = readTable_(sheet_(SHEET.TASKS)).map(function (t) {
-    return { id: String(t['ID']), phase: t['フェーズ'], category: t['カテゴリ'], title: t['タスク'], point: t['ポイント'] || '' };
+    return { id: String(t['ID']), phase: t['フェーズ'], category: t['カテゴリ'], title: t['タスク'], point: t['ポイント'] || '', mode: String(t['扱い'] || '') };
   });
   var materials = readTable_(sheet_(SHEET.MATERIALS)).map(function (m) {
     return {
@@ -330,7 +336,29 @@ function api_setCheck(traineeName, itemId, done) {
     if (!row) throw new Error('項目が見つかりません: ' + itemId);
     var now = new Date();
     sh.getRange(row._row, 6, 1, 3).setValues([[!!done, done ? me.name : '', done ? now : '']]);
-    return { id: String(itemId), done: !!done, by: done ? me.name : '', at: done ? fmtDate_(now) : '' };
+    // 実施日が空なら今日を入れておく（あとから直せる）
+    var date = fmtDay_(row['実施日']);
+    if (done && !date) {
+      date = fmtDay_(now);
+      sh.getRange(row._row, 9).setValue(date);
+    }
+    return { id: String(itemId), done: !!done, by: done ? me.name : '', at: done ? fmtDate_(now) : '', date: date };
+  });
+}
+
+/** 実施日を入れる・直す（メモ扱いのタスク用）。権限はチェックと同じ */
+function api_setItemDate(traineeName, itemId, date) {
+  var me = currentUser_();
+  if (!isStaff_(me) && me.name !== traineeName) throw new Error('他の研修生の記録は変更できません。');
+  var d = String(date || '').trim().replace(/-/g, '/');
+  if (d && !/^\d{4}\/\d{1,2}\/\d{1,2}$/.test(d)) throw new Error('日付の形が正しくありません。');
+  return withLock_(function () {
+    syncProgressSheet_(traineeName);
+    var sh = db_().getSheetByName(progressSheetName_(traineeName));
+    var row = readTable_(sh).filter(function (r) { return String(r['ID']) === String(itemId); })[0];
+    if (!row) throw new Error('項目が見つかりません: ' + itemId);
+    sh.getRange(row._row, 9).setValue(d);
+    return { id: String(itemId), date: d };
   });
 }
 
@@ -429,45 +457,6 @@ function api_addMembers(list) {
     }
   });
   return { added: added, skipped: skipped };
-}
-
-/**
- * 研修フローを「セットアップタスク」だけにする（管理者のみ）。
- * 最初のフェーズ以外のタスクは「タスクマスター（保留）」シートに移す（消さない）。
- * 戻すときは保留シートの行をタスクマスターに戻せば、研修生の進捗シートにも自動で足される。
- */
-var SETUP_PHASE = 'セットアップタスク';
-var TASKS_ON_HOLD = 'タスクマスター（保留）';
-function api_useSetupTasksOnly() {
-  var me = currentUser_();
-  requireAdmin_(me);
-  return withLock_(function () {
-    var ss = db_();
-    var sh = sheet_(SHEET.TASKS);
-    var values = sh.getDataRange().getValues();
-    var header = values.shift();
-    if (!values.length) return { kept: 0, held: 0 };
-    var first = values[0][1];
-    var keep = [];
-    var hold = [];
-    values.forEach(function (r) {
-      if (r.join('') === '') return;
-      if (r[1] === first || r[1] === SETUP_PHASE) keep.push([r[0], SETUP_PHASE].concat(r.slice(2)));
-      else hold.push(r);
-    });
-    if (hold.length) {
-      var holdSh = ss.getSheetByName(TASKS_ON_HOLD);
-      if (!holdSh) {
-        holdSh = ss.insertSheet(TASKS_ON_HOLD);
-        holdSh.getRange(1, 1, 1, header.length).setValues([header]).setFontWeight('bold').setBackground('#e8eaf6');
-        holdSh.setFrozenRows(1);
-      }
-      holdSh.getRange(holdSh.getLastRow() + 1, 1, hold.length, header.length).setValues(hold);
-    }
-    sh.getRange(2, 1, values.length, header.length).clearContent();
-    if (keep.length) sh.getRange(2, 1, keep.length, header.length).setValues(keep);
-    return { kept: keep.length, held: hold.length };
-  });
 }
 
 /** 管理画面用のリンク（管理者・教育担当のみ） */

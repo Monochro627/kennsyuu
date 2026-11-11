@@ -27,7 +27,7 @@ var GOALS = [
 var HEADERS = {
   'メンバー': ['名前', 'メール', '役割', '入社日', '状態', 'メモ'],
   '卒業条件': ['ID', '条件', '詳細'],
-  'タスクマスター': ['ID', 'フェーズ', 'カテゴリ', 'タスク', 'ポイント'],
+  'タスクマスター': ['ID', 'フェーズ', 'カテゴリ', 'タスク', 'ポイント', '扱い'],
   '資料マスター': ['ID', '区分', 'セクション', 'タイトル', '種別', 'URL', '必須', '補足', 'AI参照', '並び順'],
   'ロープレ記録': ['ID', '日付', '所要時間（分）', '話し手', '聞き手', '内容', '意識するポイント', 'フィードバック', '録音', '文字起こし', '要約', '登録者', '登録日時'],
   'eラーニング記録': ['日時', 'メール', '名前', '資料ID', 'タイトル', '気づき・学び', '質問', 'AI仮回答']
@@ -69,8 +69,8 @@ function setup() {
     SpreadsheetApp.newDataValidation().requireValueInList(['管理者', '教育担当', '研修生']).build());
   ss.getSheetByName('卒業条件').getRange(2, 1, GOALS.length, 3).setValues(GOALS);
 
-  var tasks = buildTaskMaster_();
-  ss.getSheetByName('タスクマスター').getRange(2, 1, tasks.length, 5).setValues(tasks);
+  var tasks = transformTasks_(buildTaskMaster_().map(function (r) { return r.concat(['']); }));
+  ss.getSheetByName('タスクマスター').getRange(2, 1, tasks.length, 6).setValues(tasks);
 
   p.setProperties({
     DATA_SPREADSHEET_ID: ss.getId(),

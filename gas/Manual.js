@@ -5,7 +5,7 @@
  */
 
 // 表示の作り方を変えたら上げる（古いキャッシュを使わないため）
-var MANUAL_RENDER_VERSION = 'v3';
+var MANUAL_RENDER_VERSION = 'v4';
 
 var MANUAL_TAGS = { h1: 'h2', h2: 'h2', h3: 'h3', h4: 'h4', h5: 'h4', h6: 'h4', p: 'p', ul: 'ul', ol: 'ol', li: 'li',
   table: 'table', tbody: 'tbody', tr: 'tr', td: 'td', th: 'td', br: 'br', hr: 'hr' };
@@ -78,8 +78,9 @@ function sanitizeDocHtml_(html) {
   var m;
   while ((m = re.exec(body)) !== null) {
     if (m[4] !== undefined) {
-      if (heading) heading.text += decodeEntities_(m[4]);
-      out.push(m[4].replace(/</g, '&lt;'));
+      var text = decodeEntities_(m[4]);
+      if (heading) heading.text += text;
+      out.push(escapeHtml_(text));
       continue;
     }
     var closing = m[1] === '/';
@@ -191,4 +192,46 @@ function api_getManual(materialId) {
   while (old.hasNext()) old.next().setTrashed(true);
   folder.createFile(cacheName, JSON.stringify(built), 'application/json');
   return Object.assign(base, built);
+}
+
+/**
+ * 旧Googleサイトから変換したマニュアルを作り直す（管理者のみ）。サイトを一般公開にしてから使う。
+ * 新しいドキュメントを作って資料マスターのURLを差し替え、前のドキュメントはゴミ箱に入れる。
+ * 時間がかかるので start から数件ずつ処理し、続きがあれば next を返す（画面が続けて呼ぶ）。
+ */
+var REBUILD_BATCH = 5;
+function api_rebuildManuals(start) {
+  var me = currentUser_();
+  requireAdmin_(me);
+  start = Number(start) || 0;
+  var folderId = props_().getProperty('MANUAL_FOLDER_ID');
+  var paths = listSitePaths_(fetchSitePage_(SITE_ROOT)).filter(function (p) {
+    return p.indexOf('マニュアル一覧') >= 0 || p.indexOf('ルームアドバイザー昇格まで') >= 0;
+  });
+  var sh = sheet_(SHEET.MATERIALS);
+  var rows = readTable_(sh);
+  var rebuilt = [];
+  paths.slice(start, start + REBUILD_BATCH).forEach(function (path) {
+    var html = fetchSitePage_(path);
+    var title = pageTitle_(html);
+    if (wrappedFileUrl_(html)) return;
+    var row = rows.filter(function (r) { return r['区分'] === 'マニュアル' && r['タイトル'] === title; })[0];
+    if (!row) return;
+    var doc = '<html><head><meta charset="utf-8"></head><body><h1>' + escapeHtml_(title) + '</h1>' +
+      cleanManualHtml_(html) + '</body></html>';
+    var file = Drive.Files.create({ name: title, mimeType: MimeType.GOOGLE_DOCS, parents: [folderId] },
+      Utilities.newBlob(doc, 'text/html', title + '.html'));
+    var oldId = docIdFromUrl_(row['URL']);
+    sh.getRange(row._row, 6).setValue('https://docs.google.com/document/d/' + file.id + '/edit');
+    if (oldId) {
+      var old = DriveApp.getFileById(oldId);
+      var inFolder = false;
+      var parents = old.getParents();
+      while (parents.hasNext()) if (parents.next().getId() === folderId) inFolder = true;
+      if (inFolder) old.setTrashed(true);
+    }
+    rebuilt.push(title);
+  });
+  var next = start + REBUILD_BATCH;
+  return { rebuilt: rebuilt, next: next < paths.length ? next : null, total: paths.length };
 }

@@ -181,12 +181,13 @@ function cleanManualHtml_(html) {
   var re = /<(\/?)([a-zA-Z0-9]+)([^>]*)>|([^<]+)/g;
   var out = [];
   var linkStack = [];
+  var skipText = 0;
   var seenVideo = {};
   var m;
   while ((m = re.exec(main)) !== null) {
     if (m[4] !== undefined) {
       var text = m[4];
-      if (text.trim()) out.push(escapeHtml_(decodeEntities_(text)));
+      if (text.trim() && !skipText) out.push(escapeHtml_(decodeEntities_(text)));
       continue;
     }
     var closing = m[1] === '/';
@@ -194,9 +195,13 @@ function cleanManualHtml_(html) {
     var attrs = m[3] || '';
     if (tag === 'a') {
       if (closing) {
-        if (linkStack.pop()) out.push('</a>');
+        var top = linkStack.pop();
+        if (top === 'skip') skipText--;
+        else if (top) out.push('</a>');
       } else {
         var href = attr_(attrs, 'href');
+        // ページ内の目次（#h.xxx へのリンク）は、アプリ側で目次を作るので入れない
+        if (href.indexOf('#') === 0) { linkStack.push('skip'); skipText++; continue; }
         var real = href.match(/^https:\/\/www\.google\.com\/url\?q=([^&]+)/);
         if (real) href = decodeURIComponent(real[1]);
         if (/^https?:\/\//.test(href)) { out.push('<a href="' + escapeHtml_(href) + '">'); linkStack.push(true); }

@@ -5,14 +5,22 @@ const examSheets = require('./exam_fixture');
 
 const flowRows = [
   ['', 'カテゴリ', 'タスク', '進捗', 'ポイント'],
-  ['入社前', 'セットアップ研修', '', false, '■Monochroルール・行動指針の説明'],
+  ['入社前', 'セットアップ研修', '', false, 'Monochroルール・行動指針の説明'],
   ['', 'セットアップタスク', '■業務契約締結      ', false],
   ['入社後'],
   ['依頼コンサル', 'コンサルティング', '■SNSアカウント戦略　※諸本', false, 'インスタアカウント設計'],
+  ['', 'コンサルティング', '■数値化設定行動戦略　※伊藤', false],
+  ['諸々の処理', 'ワーク', '■課題図書3冊発表', false, '１週間後に試験ある'],
   ['※ひたすらロープレ', 'ロールプレイング', '①ヒアリング', false],
-  ['※黄色優先', 'ロールプレイング', '②物件提案', false],
+  ['※黄色優先', 'ロールプレイング', '②物件提案', false, 'メラビアンも練習'],
+  ['物件用語・現地', 'ワーク', '■賃貸用語＆物件資料ワーク', false],
+  ['事務処理関連', 'ワーク', '■①初期費用見積作成', false],
   ['2週間後試験\n→インスタ開始', '効果測定', '■ワーク試験', false],
   ['', '', '★インスタ開始', false, '★１件成約まで上長同席'],
+  ['1カ月間', 'コンサルティング', '■カレンダー徹底させる', false],
+  ['', 'ロールプレイング', '■とにかくロープレ', false],
+  ['', 'コンサルティング', '■マイビジョン設定', false],
+  ['1～3ヵ月目最終日\n→研修生から\nルームアドバイザーへ', '卒業検定', '■原状回復の知識試験', false],
   ['主任要件目指す', '', '', false],
   ['', '', '', false],
 ];
@@ -28,15 +36,23 @@ const as = (email) => { ctx.state.userEmail = email; };
 // setup
 run('setup()');
 const tasks = run('buildTaskMaster_()');
-assert.deepStrictEqual(tasks.map((t) => t[1] + '|' + t[3]), [
-  '1. 入社前|セットアップ研修',
-  '1. 入社前|業務契約締結',
-  '2. 依頼コンサル|SNSアカウント戦略　※諸本',
-  '3. ひたすらロープレ|①ヒアリング',
-  '3. ひたすらロープレ|②物件提案',
-  '4. 2週間後試験 →インスタ開始|ワーク試験',
-  '4. 2週間後試験 →インスタ開始|★インスタ開始',
+assert.strictEqual(tasks.length, 15);
+assert.strictEqual(tasks[0][1], '1. 入社前');
+// setup では今の形に並べ替えてタスクマスターに入れる
+const shaped = run(`transformTasks_(buildTaskMaster_().map(function (r) { return r.concat(['']); }))`);
+assert.deepStrictEqual(shaped.map((t) => t[0] + '|' + t[1] + '|' + t[5]), [
+  'T001|セットアップ研修|チェック', 'T002|セットアップ研修|チェック', 'T005|セットアップ研修|チェック',
+  'T012|セットアップ研修|チェック', 'T013|セットアップ研修|チェック',
+  'T003|依頼コンサル|メモ', 'T004|依頼コンサル|メモ', 'T014|依頼コンサル|メモ',
+  'T010|2週間後試験 →インスタ開始|チェック', 'T011|2週間後試験 →インスタ開始|チェック',
+  'T008|事務作業ワーク|G04', 'T009|事務作業ワーク|G04',
+  'T006|ロープレの種類|ロープレ一覧', 'T007|ロープレの種類|ロープレ一覧',
+  'M001|入社からの目安|目安：〜2週間', 'M002|入社からの目安|目安：〜2週間',
+  'M003|入社からの目安|目安：〜1ヶ月', 'M004|入社からの目安|目安：〜1ヶ月', 'M005|入社からの目安|目安：〜1ヶ月',
+  'M006|入社からの目安|目安：1〜3ヶ月（卒業検定）',
 ]);
+assert.strictEqual(shaped.find((t) => t[0] === 'T004')[3], '数値化設定行動戦略　※小嶋', '伊藤 → 小嶋');
+assert.deepStrictEqual(run(`transformTasks_(${JSON.stringify(shaped)})`), shaped, 'idempotent');
 assert.throws(() => run('setup()'), /すでに初期設定済み/);
 
 // 管理者で起動
@@ -45,7 +61,7 @@ let boot = run('api_bootstrap()');
 assert.strictEqual(boot.me.role, '管理者');
 assert.strictEqual(boot.me.name, '小嶋勇輝');
 assert.strictEqual(boot.goals.length, 9);
-assert.strictEqual(boot.tasks.length, 7);
+assert.strictEqual(boot.tasks.length, 20);
 assert.strictEqual(boot.materials.length, 3);
 
 // メンバー追加
@@ -55,7 +71,7 @@ assert.throws(() => run(`api_addMember({name:'小田天誠', email:'x@monochro-i
 boot = run('api_bootstrap()');
 assert.strictEqual(boot.summaries.length, 1);
 assert.strictEqual(boot.summaries[0].percent, 0);
-assert.strictEqual(boot.summaries[0].phase, '1. 入社前');
+assert.strictEqual(boot.summaries[0].phase, 'セットアップ研修');
 assert.strictEqual(boot.summaries[0].videosRequired, 1);
 
 // 研修生本人のチェック
@@ -86,7 +102,7 @@ const notes = run('api_myElearningNotes()');
 assert.strictEqual(notes[0].question, 'なし');
 boot = run('api_bootstrap()');
 assert.strictEqual(boot.summaries[0].videosWatched, 1);
-assert.strictEqual(boot.summaries[0].phase, '1. 入社前');
+assert.strictEqual(boot.summaries[0].phase, 'セットアップ研修');
 
 // ロープレ記録（録音つき）
 const rp = run(`api_addRoleplay({date:'2026/10/24', minutes:30, speaker:'小田天誠', listener:'伊藤竣哉', topic:'【試験①】カウンセリング面談', feedback:'抑揚を意識'}, {name:'a.m4a', mimeType:'audio/mp4', base64:'AAAA'})`);
@@ -158,22 +174,35 @@ const bulk = run(`api_addMembers([{name:'山田園佳', email:'yamada@monochro-i
 assert.deepStrictEqual(bulk.added, ['山田園佳']);
 assert.strictEqual(bulk.skipped.length, 1);
 
-// 研修フローをセットアップタスクだけにする（ほかは保留シートへ。進捗の数え方からも外れる）
-const beforeRows = run(`api_getProgress('小田天誠')`).rows.length;
-const held = run('api_useSetupTasksOnly()');
-assert.deepStrictEqual(held, { kept: 2, held: 5 });
-const tasksNow = run('api_bootstrap()').tasks;
-assert.deepStrictEqual([...new Set(tasksNow.map((t) => t.phase))], ['セットアップタスク']);
-const after = run(`api_getProgress('小田天誠')`);
-assert.strictEqual(after.rows.length, beforeRows - 5);
-assert.strictEqual(run('api_useSetupTasksOnly()').held, 0, 'idempotent');
-// 保留から1行戻すと、進捗シートにも自動で足される
-const ss = ctx.books[Object.keys(ctx.books).find((k) => ctx.books[k].name === '研修アプリデータ ※社外秘')];
-const holdSh = ss.getSheetByName('タスクマスター（保留）');
-ss.getSheetByName('タスクマスター').appendRow(holdSh.getRange(2, 1, 1, 5).getValues()[0]);
-ss.getSheetByName('タスクマスター').appendRow(['T099', 'セットアップタスク', '', '新しいタスク', '']);
-assert.strictEqual(run(`api_getProgress('小田天誠')`).rows.length, beforeRows - 5 + 2);
+// 進捗に数えるのは卒業要件とチェック扱いのタスクだけ（メモ・事務作業ワークの中身は数えない）
+let pr = run(`api_getProgress('小田天誠')`);
+assert.strictEqual(pr.rows.length, 9 + 12, 'goals + tasks with progress rows');
+assert.strictEqual(pr.rows.filter((r) => r.counts).length, 9 + 7);
+// メモのタスク：チェックすると実施日に今日が入り、日付は直せる。進捗率は変わらない
 as('t.oda@monochro-inc.com');
+const pct0 = run('api_bootstrap()').summaries[0].percent;
+const memo = run(`api_setCheck('小田天誠', 'T003', true)`);
+assert.ok(/^\d{4}\/\d{2}\/\d{2}$/.test(memo.date));
+assert.strictEqual(run(`api_setItemDate('小田天誠', 'T003', '2026-11-01')`).date, '2026/11/01');
+assert.strictEqual(run(`api_getProgress('小田天誠')`).rows.find((r) => r.id === 'T003').date, '2026/11/01');
+assert.throws(() => run(`api_setItemDate('小田天誠', 'T003', 'あした')`), /日付/);
+assert.strictEqual(run('api_bootstrap()').summaries[0].percent, pct0);
+// 整理し直しても同じ（すでに扱いが入っている）。保留シートの古い行も取り込む
+as('owner@monochro-inc.com');
+const ss = ctx.books[Object.keys(ctx.books).find((k) => ctx.books[k].name === '研修アプリデータ ※社外秘')];
+const hold = ss.insertSheet('タスクマスター（保留）');
+hold.appendRow(['ID', 'フェーズ', 'カテゴリ', 'タスク', 'ポイント']);
+hold.appendRow(['T050', '8. 1カ月間', 'コンサルティング', 'ブランドマップ信念', '']);
+const re = run('api_restructureFlow()');
+assert.strictEqual(re.total, 22, '20 + the held row + its guide row');
+const t2 = run('api_bootstrap()').tasks;
+assert.strictEqual(t2.find((t) => t.id === 'T050').mode, 'メモ');
+assert.strictEqual(new Set(t2.map((t) => t.id)).size, t2.length, 'no duplicate ids');
+assert.ok(t2.some((t) => t.id === 'M007'));
+// タスクを足すと、研修生の進捗シートにも自動で足される
+ss.getSheetByName('タスクマスター').appendRow(['T099', 'セットアップ研修', '', '新しいタスク', '', 'チェック']);
+as('t.oda@monochro-inc.com');
+assert.ok(run(`api_getProgress('小田天誠')`).rows.some((r) => r.id === 'T099'));
 assert.strictEqual(run(`api_setCheck('小田天誠', 'T099', true)`).done, true);
 
 // メンバー表にいない人は使えない

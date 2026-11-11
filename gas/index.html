@@ -114,6 +114,50 @@
   .badge.new svg { animation: pop .7s ease; }
   @keyframes pop { 0% { transform: scale(.4); } 70% { transform: scale(1.15); } 100% { transform: scale(1); } }
 
+  /* 質問の4大原則 */
+  .rules { margin: 10px 0 0; padding: 0; list-style: none; counter-reset: rule; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  @media (max-width: 560px) { .rules { grid-template-columns: 1fr; } }
+  .rules li { counter-increment: rule; display: flex; gap: 10px; align-items: center; background: var(--paper); border-radius: 12px; padding: 10px 12px; font-weight: 500; font-size: .9rem; }
+  .rules li::before { content: counter(rule); font: 800 .8rem var(--en); width: 24px; height: 24px; border-radius: 50%; background: var(--ink); color: #fff; display: grid; place-items: center; flex: none; }
+
+  /* 卒業要件の縦のリスト */
+  .goal-list { margin-top: 14px; border-top: 1px solid var(--line); }
+  .goal-item { border-bottom: 1px solid var(--line); scroll-margin-top: 70px; }
+  .goal-item > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 12px 2px; }
+  .goal-item > summary::-webkit-details-marker { display: none; }
+  .goal-item > summary::after { content: "▾"; color: var(--g4); margin-left: auto; transition: transform .2s; }
+  .goal-item[open] > summary::after { transform: rotate(180deg); }
+  .goal-item .num { font: 800 .7rem var(--en); color: var(--g5); flex: none; }
+  .goal-item .gtitle { font-weight: 500; min-width: 0; }
+  .goal-item .box svg { opacity: 0; }
+  .goal-item.on .box { background: var(--ink); }
+  .goal-item.on .box svg { opacity: 1; transform: none; }
+  .goal-item.on .gtitle { color: var(--mute); }
+  .goal-body { padding: 0 2px 14px 34px; }
+  @media (max-width: 560px) { .goal-body { padding-left: 2px; } }
+
+  /* 入社からの目安 */
+  .guide-wrap { overflow-x: auto; margin: 0 -4px; padding: 0 4px 4px; }
+  .guide { display: grid; gap: 10px; min-width: 0; }
+  .guide-col { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: #fff; }
+  .guide-head { background: var(--ink); color: #fff; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
+  .guide-head .gstep { font: 800 .6rem var(--en); letter-spacing: .2em; opacity: .6; }
+  .guide-col:nth-child(2) .guide-head { background: var(--g2); }
+  .guide-col:nth-child(3) .guide-head { background: var(--g4); }
+  .guide-col ul { margin: 0; padding: 10px 12px 12px 1.6em; font-size: .85rem; display: grid; gap: 4px; }
+
+  /* メモ扱いのタスク */
+  .phase.memo details { border-style: dashed; }
+  .memo-row { align-items: center; gap: 10px; cursor: default; }
+  .memo-main { display: flex; gap: 12px; align-items: flex-start; flex: 1; min-width: 0; cursor: pointer; position: relative; }
+  .memo-date { width: 150px; flex: none; padding: 6px 8px; font-size: .8rem; }
+  @media (max-width: 560px) { .memo-row { flex-wrap: wrap; } .memo-date { margin-left: 36px; } }
+
+  /* ロープレの種類 */
+  .rp-kinds { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+  .rp-kind { text-align: left; border: 1px solid var(--line); background: #fff; border-radius: 12px; padding: 10px 12px; font: inherit; color: inherit; cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
+  .rp-kind:hover { border-color: var(--ink); }
+
   /* 卒業要件のバッジ */
   .goal-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
   @media (min-width: 760px) { .goal-grid { grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 8px; } }
@@ -250,6 +294,14 @@
   .doc a { text-decoration: underline; text-underline-offset: 3px; }
   .doc .mvideo { margin: 1.4em 0; }
   .doc .mvideo .video { border-radius: 14px; }
+  @media (max-width: 560px) {
+    .doc { font-size: .95rem; line-height: 1.85; padding: 20px 16px; border-radius: 16px; }
+    .doc h2 { font-size: 1.08rem; gap: 8px; }
+    .doc h3 { font-size: 1rem; }
+    .reader .layout { padding: 16px 12px 60px; }
+    .reader .cover h1 { font-size: 1.35rem; }
+  }
+  .doc p, .doc li { overflow-wrap: anywhere; }
   .doc-frame { width: 100%; height: 78vh; border: 1px solid var(--line); border-radius: 16px; background: #fff; }
 
   /* ロープレ */
@@ -586,22 +638,27 @@ function loadProgress(name) {
 function canEdit() { return isStaff() || S.data.me.name === S.trainee; }
 function stateMap() { var m = {}; S.progress.rows.forEach(function (r) { m[r.id] = r; }); return m; }
 function progressPct() {
-  var all = S.progress.rows;
+  // 進捗率に数えるのは卒業要件とチェック扱いのタスクだけ（メモや事務作業ワークの中身は数えない）
+  var all = S.progress.rows.filter(function (r) { return r.counts !== false; });
   return all.length ? Math.round(all.filter(function (r) { return r.done; }).length * 100 / all.length) : 0;
 }
+function isMemo(t) { return t.mode === 'メモ'; }
+function isFlowTask(t) { return !t.mode || t.mode === 'チェック' || t.mode === 'メモ'; }
+/** 研修フローのまとまり（セットアップ研修・依頼コンサル・2週間後試験など）。並びはタスクマスターの順 */
 function phasesOf() {
   var phases = [];
-  S.data.tasks.forEach(function (t) {
-    var p = phases[phases.length - 1];
-    if (!p || p.name !== t.phase) phases.push(p = { name: t.phase, tasks: [] });
+  S.data.tasks.filter(isFlowTask).forEach(function (t) {
+    var p = phases.filter(function (x) { return x.name === t.phase; })[0];
+    if (!p) phases.push(p = { name: t.phase, tasks: [], memo: isMemo(t) });
     p.tasks.push(t);
   });
   return phases;
 }
+function goalTasks(goalId) { return S.data.tasks.filter(function (t) { return t.mode === goalId; }); }
 function requiredVideos() { return S.data.materials.filter(function (m) { return m.group === 'eラーニング' && m.required; }); }
 function snapshot() {
   var st = stateMap();
-  var phases = phasesOf();
+  var phases = phasesOf().filter(function (p) { return !p.memo; });
   var phasesDone = phases.filter(function (p) { return p.tasks.every(function (t) { return st[t.id] && st[t.id].done; }); }).length;
   var tasksDone = S.progress.rows.filter(function (r) { return r.kind === 'タスク' && r.done; }).length;
   var goalsDone = S.progress.rows.filter(function (r) { return r.kind === '卒業条件' && r.done; }).length;
@@ -648,21 +705,28 @@ function viewHome() {
       stairsSvg(snap.stage)),
     h('div', { class: 'stats' },
       h('div', null, h('b', { text: snap.stats.points }), h('span', { text: 'POINTS' })),
-      h('div', null, h('b', { text: snap.stats.streak + (snap.stats.streak ? '' : '') }), h('span', { text: 'DAY STREAK' })),
+      h('div', null, h('b', { text: snap.stats.streak }), h('span', { text: 'DAY STREAK' })),
       h('div', null, h('b', { text: snap.stats.week }), h('span', { text: 'THIS WEEK' }))),
     editable ? null : h('p', { class: 'small', style: 'opacity:.6;margin:10px 0 0', text: '他の研修生の進捗は見るだけです。' })));
 
-  // 次のアクション
+  // 質問の4大原則（現在地と次にやることの間）
+  append(wrap, h('div', { class: 'card principles' },
+    h('div', { class: 'row' }, h('span', { class: 'eyebrow', text: 'Rules' }), h('strong', { text: '質問の4大原則' })),
+    h('ol', { class: 'rules' }, PRINCIPLES.map(function (p) { return h('li', { text: p }); })),
+    h('p', { class: 'small muted', style: 'margin:8px 0 0', text: 'マニュアルにあるものは確認したうえで、それでも分からない点を質問しましょう。' })));
+
+  // 次のアクション（進捗に数えるタスクから）
   var phases = phasesOf();
-  var current = phases.findIndex(function (p) { return p.tasks.some(function (t) { return !(st[t.id] && st[t.id].done); }); });
-  var nextTask = current >= 0 ? phases[current].tasks.filter(function (t) { return !(st[t.id] && st[t.id].done); })[0] : null;
+  var checkPhases = phases.filter(function (p) { return !p.memo; });
+  var currentPhase = checkPhases.filter(function (p) { return p.tasks.some(function (t) { return !(st[t.id] && st[t.id].done); }); })[0];
+  var nextTask = currentPhase ? currentPhase.tasks.filter(function (t) { return !(st[t.id] && st[t.id].done); })[0] : null;
   var nextVideo = requiredVideos().filter(function (m) { return S.progress.watched.indexOf(m.id) < 0; })[0];
   if (nextTask || nextVideo) {
     var next = h('div', { class: 'next' });
     if (nextTask) {
       var doBtn = editable ? h('button', { class: 'btn', text: '完了', onclick: function () { toggle(nextTask.id, true, doBtn); } }) : null;
       append(next, h('div', { class: 'next-item' }, h('div', { class: 'ico', html: icon('flag') }),
-        h('div', { class: 't' }, h('div', { text: nextTask.title }), h('div', { class: 'small muted', text: phases[current].name + (nextTask.point ? '｜' + nextTask.point : '') })), doBtn));
+        h('div', { class: 't' }, h('div', { text: nextTask.title }), h('div', { class: 'small muted', text: currentPhase.name + (nextTask.point ? '｜' + nextTask.point : '') })), doBtn));
     }
     if (nextVideo && S.data.me.name === S.trainee) {
       append(next, h('div', { class: 'next-item' }, h('div', { class: 'ico', html: icon('play') }),
@@ -672,57 +736,61 @@ function viewHome() {
     append(wrap, h('div', { class: 'card' }, h('div', { class: 'eyebrow', text: 'Next Action' }), h('h2', { class: 'title', text: '次にやること' }), next));
   }
 
-  // 卒業要件（バッジ）。押すと下に詳細が開く
-  append(wrap, goalBadges(snap, st, editable));
+  // 卒業要件：上にバッジ、下に縦のリスト（押すと詳細と項目が開く）
+  append(wrap, goalsCard(snap, st, editable));
 
-  // セットアップタスク（研修フロー）
-  if (phases.length > 1) append(wrap, h('div', { class: 'section-head' }, h('h2', { text: '研修フロー' }), h('span', { class: 'en', text: 'TRAINING FLOW' })));
-  var tl = h('div', { class: 'timeline' + (phases.length === 1 ? ' single' : '') });
-  phases.forEach(function (p, i) {
+  // 入社からの目安（横向きの表）
+  var guide = guideTable();
+  if (guide) append(wrap, guide);
+
+  // 研修フロー（セットアップ研修・依頼コンサル・2週間後試験など）
+  append(wrap, h('div', { class: 'section-head' }, h('h2', { text: '研修フロー' }), h('span', { class: 'en', text: 'TRAINING FLOW' })));
+  phases.forEach(function (p) {
     var d = p.tasks.filter(function (t) { return st[t.id] && st[t.id].done; }).length;
-    var done = d === p.tasks.length;
-    append(tl, h('div', { class: 'phase' + (done ? ' done' : '') + (i === current ? ' current' : '') },
-      h('div', { class: 'node', html: done ? '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#fff" stroke-width="3.5"><path d="M4 12.5l5 5L20 6.5"/></svg>' : String(i + 1) }),
-      h('details', { open: i === current },
-        h('summary', null, h('strong', { text: p.name.replace(/^\d+\.\s*/, '') }),
-          i === current ? h('span', { class: 'pill solid', text: 'NOW' }) : null,
-          h('div', { class: 'mini' }, h('div', { class: 'small', style: 'text-align:right;font:700 .7rem Montserrat', text: d + '/' + p.tasks.length }), h('div', { class: 'bar' }, h('i', { style: 'width:' + (d * 100 / p.tasks.length) + '%' })))),
-        h('div', { class: 'body' }, p.tasks.map(function (t) {
-          var cat = t.category && t.category !== t.title && t.category !== p.name ? h('span', { class: 'pill jp', style: 'margin-left:6px', text: t.category }) : null;
-          return checkRow(t.id, t.title, t.point, cat, st[t.id], editable, null, PT.task);
-        })))));
+    var isCurrent = p === currentPhase;
+    append(wrap, h('div', { class: 'phase' + (!p.memo && d === p.tasks.length ? ' done' : '') + (isCurrent ? ' current' : '') + (p.memo ? ' memo' : '') },
+      h('details', { open: isCurrent || (p.memo && S.openMemo === p.name) },
+        h('summary', { onclick: function () { if (p.memo) S.openMemo = S.openMemo === p.name ? null : p.name; } },
+          h('strong', { text: p.name.replace(/^\d+\.\s*/, '') }),
+          isCurrent ? h('span', { class: 'pill solid', text: 'NOW' }) : null,
+          p.memo ? h('span', { class: 'pill jp', text: 'メモ・' + d + '件記録' }) :
+            h('div', { class: 'mini' }, h('div', { class: 'small', style: 'text-align:right;font:700 .7rem Montserrat', text: d + '/' + p.tasks.length }), h('div', { class: 'bar' }, h('i', { style: 'width:' + (d * 100 / p.tasks.length) + '%' })))),
+        h('div', { class: 'body' },
+          p.memo ? h('p', { class: 'small muted', style: 'margin:0 0 4px', text: 'メモとして使う項目です。全部終わらせなくて大丈夫。やったらチェックして、実施日を入れておきましょう（進捗率には入りません）。' }) : null,
+          p.tasks.map(function (t) {
+            var cat = t.category && t.category !== t.title && t.category !== p.name ? h('span', { class: 'pill jp', style: 'margin-left:6px', text: t.category }) : null;
+            return p.memo ? memoRow(t, st[t.id], editable, cat) : checkRow(t.id, t.title, t.point, cat, st[t.id], editable, null, PT.task);
+          })))));
   });
-  append(wrap, tl);
-
-  // 質問の4大原則
-  append(wrap, h('details', { class: 'card principles' },
-    h('summary', null, h('span', { class: 'eyebrow', text: 'Rules' }), h('strong', { text: '質問の4大原則' })),
-    h('ol', null, PRINCIPLES.map(function (p) { return h('li', { text: p }); })),
-    h('p', { class: 'small muted', text: 'マニュアルにあるものは確認したうえで、それでも分からない点を質問しましょう。' })));
   return wrap;
 }
 
-/** 卒業要件9個を六角形のバッジで並べ、押したものの詳細を下に開く */
-function goalBadges(snap, st, editable) {
+/** 卒業要件：上に9個のバッジ（押すとそのリストを開く）、下に縦のリスト */
+function goalsCard(snap, st, editable) {
   var done = S.data.goals.filter(function (g) { return st[g.id] && st[g.id].done; }).length;
   var grid = h('div', { class: 'goal-grid' });
   S.data.goals.forEach(function (g, i) {
     var on = !!(st[g.id] && st[g.id].done);
-    var no = ('0' + (i + 1)).slice(-2);
-    append(grid, h('button', { type: 'button', class: 'goal' + (on ? ' on' : '') + (S.openGoal === g.id ? ' open' : ''), 'aria-expanded': S.openGoal === g.id ? 'true' : 'false',
-      onclick: function () { S.openGoal = S.openGoal === g.id ? null : g.id; render(); } },
-      badgeSvg(no, on), h('span', { class: 'gname', text: g.title.replace(/（.*?）/g, '') })));
+    append(grid, h('button', { type: 'button', class: 'goal' + (on ? ' on' : '') + (S.openGoal === g.id ? ' open' : ''),
+      onclick: function () {
+        S.openGoal = g.id;
+        render();
+        var el = document.getElementById('goal-' + g.id);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } },
+      badgeSvg(('0' + (i + 1)).slice(-2), on), h('span', { class: 'gname', text: g.title.replace(/（.*?）/g, '') })));
   });
-  var card = h('div', { class: 'card' }, h('div', { class: 'row' },
+  var list = h('div', { class: 'goal-list' }, S.data.goals.map(function (g, i) { return goalItem(g, i, st, snap, editable); }));
+  return h('div', { class: 'card' }, h('div', { class: 'row' },
     h('div', null, h('div', { class: 'eyebrow', text: 'Graduation' }), h('h2', { class: 'title', style: 'margin-bottom:6px', text: 'ルームアドバイザー卒業要件' })),
     h('div', { class: 'spacer' }), h('span', { class: 'pill' + (done === S.data.goals.length ? ' solid' : ''), text: done + ' / ' + S.data.goals.length })),
-    h('p', { class: 'small muted', style: 'margin:0 0 12px', text: 'バッジを押すと、くわしい内容が開きます。9個すべて点灯したらルームアドバイザーです。' }), grid);
-  var open = S.data.goals.filter(function (g) { return g.id === S.openGoal; })[0];
-  if (open) append(card, goalDetail(open, S.data.goals.indexOf(open), st[open.id], snap, editable));
-  return card;
+    h('p', { class: 'small muted', style: 'margin:0 0 12px', text: '9個すべて達成したらルームアドバイザーです。項目を押すと、くわしい内容が開きます。' }), grid, list);
 }
-function goalDetail(g, i, state, snap, editable) {
+function goalItem(g, i, st, snap, editable) {
+  var state = st[g.id];
   var on = !!(state && state.done);
+  var subs = goalTasks(g.id);
+  var subDone = subs.filter(function (t) { return st[t.id] && st[t.id].done; }).length;
   var extra = null;
   if (g.id === 'G02') {
     var pct = snap.reqTotal ? Math.round(snap.reqDone * 100 / snap.reqTotal) : 0;
@@ -740,14 +808,68 @@ function goalDetail(g, i, state, snap, editable) {
   }
   var btn = editable ? h('button', { class: 'btn' + (on ? ' ghost' : ''), text: on ? '達成を取り消す' : '達成にする（+' + PT.goal + 'pt）' }) : null;
   if (btn) btn.addEventListener('click', function () { toggle(g.id, !on, btn); });
-  return h('div', { class: 'goal-detail' },
-    h('div', { class: 'row' }, h('span', { class: 'gno', text: ('0' + (i + 1)).slice(-2) }), h('strong', { style: 'flex:1;min-width:0', text: g.title }),
-      h('span', { class: 'pill' + (on ? ' solid' : ''), text: on ? '達成' : '未達成' })),
-    g.detail ? h('p', { style: 'margin:10px 0 0', text: g.detail }) : null,
-    on && state.by ? h('div', { class: 'small muted', style: 'margin-top:6px', text: '✓ ' + state.by + '　' + state.at }) : null,
-    extra,
-    h('div', { class: 'row', style: 'margin-top:14px' }, btn,
-      h('button', { class: 'btn ghost', text: '閉じる', onclick: function () { S.openGoal = null; render(); } })));
+  var details = h('details', { class: 'goal-item' + (on ? ' on' : ''), id: 'goal-' + g.id, open: S.openGoal === g.id },
+    h('summary', null,
+      h('span', { class: 'box', html: '<svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5"/></svg>' }),
+      h('span', { class: 'num', text: ('0' + (i + 1)).slice(-2) }),
+      h('span', { class: 'gtitle', text: g.title }),
+      subs.length ? h('span', { class: 'pill', text: subDone + '/' + subs.length }) : null,
+      g.id === 'G02' ? h('span', { class: 'pill', text: snap.reqDone + '/' + snap.reqTotal }) : null,
+      g.id === 'G07' ? examChips(S.progress.examsPassed || []) : null),
+    h('div', { class: 'goal-body' },
+      g.detail ? h('p', { style: 'margin:0', text: g.detail }) : null,
+      on && state.by ? h('div', { class: 'small muted', style: 'margin-top:6px', text: '✓ ' + state.by + '　' + state.at }) : null,
+      extra,
+      subs.length ? h('div', { class: 'gx' }, h('div', { class: 'small', style: 'font-weight:700;margin-bottom:2px', text: 'この要件でやること' }),
+        subs.map(function (t) { return checkRow(t.id, t.title, t.point, null, st[t.id], editable, null, PT.task); })) : null,
+      btn ? h('div', { style: 'margin-top:12px' }, btn) : null));
+  details.addEventListener('toggle', function () {
+    if (details.open) S.openGoal = g.id;
+    else if (S.openGoal === g.id) S.openGoal = null;
+  });
+  return details;
+}
+
+/** 入社からの目安。「目安：〇〇」の扱いのタスクを、〇〇ごとの列にして横に並べる */
+function guideTable() {
+  var cols = [];
+  S.data.tasks.forEach(function (t) {
+    if (String(t.mode).indexOf('目安：') !== 0) return;
+    var label = t.mode.slice(3);
+    var c = cols.filter(function (x) { return x.label === label; })[0];
+    if (!c) cols.push(c = { label: label, items: [] });
+    c.items.push(t.title);
+  });
+  if (!cols.length) return null;
+  return h('div', { class: 'card' }, h('div', { class: 'eyebrow', text: 'Roadmap' }), h('h2', { class: 'title', text: '入社からの目安' }),
+    h('div', { class: 'guide-wrap' }, h('div', { class: 'guide', style: 'grid-template-columns:repeat(' + cols.length + ', minmax(200px, 1fr))' },
+      cols.map(function (c, i) {
+        return h('div', { class: 'guide-col' }, h('div', { class: 'guide-head' }, h('span', { class: 'gstep', text: 'STEP ' + (i + 1) }), h('b', { text: c.label })),
+          h('ul', null, c.items.map(function (x) { return h('li', { text: x }); })));
+      }))),
+    h('p', { class: 'small muted', style: 'margin:8px 0 0', text: '目安なのでチェックはありません。スマホでは横にスクロールできます。' }));
+}
+
+/** メモ扱いのタスク：チェック＋実施日（全部終わらせなくてよい） */
+function memoRow(t, state, editable, extra) {
+  var done = !!(state && state.done);
+  var cb = h('input', { type: 'checkbox', disabled: !editable || !state, 'aria-label': t.title });
+  cb.checked = done;
+  var date = h('input', { type: 'date', class: 'memo-date', disabled: !editable || !state, 'aria-label': t.title + 'の実施日', value: state && state.date ? state.date.replace(/\//g, '-') : '' });
+  date.addEventListener('change', function () {
+    date.disabled = true;
+    call('api_setItemDate', S.trainee, t.id, date.value).then(function (r) {
+      if (state) state.date = r.date;
+      date.disabled = false;
+      toast(r.date ? '実施日を ' + r.date + ' にしました' : '実施日を消しました');
+    }).catch(function (e) { date.disabled = false; toast(errMsg(e), true); });
+  });
+  var row = h('div', { class: 'check memo-row' + (done ? ' done' : '') },
+    h('label', { class: 'memo-main' }, cb, h('span', { class: 'box', html: '<svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5"/></svg>' }),
+      h('div', { class: 't' }, h('div', { class: 'main' }, t.title, extra), t.point ? h('div', { class: 'small muted', text: t.point }) : null)),
+    date);
+  cb.addEventListener('change', function () { toggle(t.id, cb.checked, row, cb); });
+  return row;
 }
 
 function checkRow(id, title, detail, extra, st, editable, num, pt) {
@@ -772,7 +894,7 @@ function toggle(id, want, anchor, cb) {
   call('api_setCheck', S.trainee, id, want).then(function (r) {
     var target = S.progress.rows.filter(function (x) { return x.id === r.id; })[0];
     var wasDone = target && target.done;
-    if (target) { target.done = r.done; target.by = r.by; target.at = r.at; }
+    if (target) { target.done = r.done; target.by = r.by; target.at = r.at; if (r.date) target.date = r.date; }
     if (target && wasDone !== r.done) {
       var pts = target.kind === '卒業条件' ? PT.goal : PT.task;
       S.progress.stats.points += r.done ? pts : -pts;
@@ -1028,7 +1150,7 @@ function viewRoleplay() {
     minutes: h('input', { type: 'number', min: '1', placeholder: '30' }),
     speaker: h('select', null, opt(S.data.me.role === '研修生' ? S.data.me.name : '')),
     listener: h('select', null, opt(S.data.me.role !== '研修生' ? S.data.me.name : '')),
-    topic: h('input', { list: 'rp-topics', placeholder: '例：【試験①】カウンセリング面談' }),
+    topic: h('input', { id: 'rp-topic', list: 'rp-topics', placeholder: '例：【試験①】カウンセリング面談', value: S.rpTopic || '' }),
     focus: h('textarea', { placeholder: '現在の課題・意識するポイント' }),
     feedback: h('textarea', { placeholder: '聞き手からのフィードバック' }),
     file: h('input', { type: 'file', accept: 'audio/*,video/*' })
@@ -1055,7 +1177,19 @@ function viewRoleplay() {
     h('div', { style: 'font-weight:700;font-size:1.2rem;margin:6px 0 4px', text: 'ロープレ' }),
     h('div', { class: 'small', style: 'opacity:.7', text: '話し手・聞き手・内容・フィードバックを残して、成長を見える化。録音も一緒に保存できます。' })));
   append(wrap, examSection());
-  append(wrap, h('details', { class: 'card' },
+  var kinds = S.data.tasks.filter(function (t) { return t.mode === 'ロープレ一覧'; });
+  if (kinds.length) {
+    append(wrap, h('div', { class: 'card' }, h('div', { class: 'eyebrow', text: 'Role Play List' }), h('h2', { class: 'title', text: 'ロープレの種類' }),
+      h('p', { class: 'small muted', style: 'margin:0 0 8px', text: 'こんなロープレがあります。押すと、そのロープレを記録する画面が開きます。' }),
+      h('div', { class: 'rp-kinds' }, kinds.map(function (t) {
+        return h('button', { type: 'button', class: 'rp-kind', onclick: function () {
+          S.rpTopic = t.title.replace(/^[■①-⑳\d]+\s*/, '');
+          var det = document.getElementById('rp-form');
+          if (det) { det.open = true; var inp = document.getElementById('rp-topic'); if (inp) { inp.value = S.rpTopic; inp.focus(); } det.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+        } }, h('b', { text: t.title }), t.point ? h('span', { class: 'small muted', text: t.point }) : null);
+      }))));
+  }
+  append(wrap, h('details', { class: 'card', id: 'rp-form' },
     h('summary', { style: 'cursor:pointer;list-style:none' }, h('strong', { text: '＋ ロープレを記録する' })),
     h('div', { style: 'margin-top:14px' },
       h('div', { class: 'grid2' }, h('label', { class: 'field' }, '日付', f.date), h('label', { class: 'field' }, '所要時間（分）', f.minutes),
@@ -1331,6 +1465,18 @@ function readFile(file) {
   });
 }
 
+/** 押し間違えないよう、2回押したら実行するボタン。fn は Promise を返す */
+function twoStep(label, fn) {
+  var btn = h('button', { class: 'btn ghost', text: label });
+  var armed = false;
+  btn.addEventListener('click', function () {
+    if (!armed) { armed = true; btn.textContent = 'もう一度押すと実行します'; return; }
+    btn.disabled = true;
+    fn(btn).catch(function (e) { btn.disabled = false; armed = false; btn.textContent = label; toast(errMsg(e), true); });
+  });
+  return btn;
+}
+
 // ---------- 管理 ----------
 function viewAdmin() {
   var wrap = h('div');
@@ -1379,23 +1525,45 @@ function viewAdmin() {
       h('p', { class: 'small muted', text: '1行に1人、「名前, メール, 役割」で入力します。役割を省くと教育担当になります（研修生・教育担当・管理者）。' }),
       bulk, h('div', { style: 'margin-top:10px' }, bulkBtn)));
 
-    var phases = phasesOf();
-    if (phases.length > 1) {
-      var holdBtn = h('button', { class: 'btn ghost', text: 'セットアップタスクだけにする' });
-      var armed = false;
-      holdBtn.addEventListener('click', function () {
-        if (!armed) { armed = true; holdBtn.textContent = 'もう一度押すと実行します'; return; }
-        holdBtn.disabled = true;
-        call('api_useSetupTasksOnly').then(function (r) {
-          toast('セットアップタスク ' + r.kept + '件を残し、' + r.held + '件を保留にしました');
+    // 研修フローを今の形に整理する（扱いが入っていないタスクがあるときだけ出す）
+    if (S.data.tasks.some(function (t) { return !t.mode; })) {
+      var flowBtn = twoStep('研修フローを新しい形に整理する', function (btn) {
+        return call('api_restructureFlow').then(function (r) {
+          toast('研修フローを整理しました（' + r.total + '件）');
           S.progress = null;
           return call('api_bootstrap');
-        }).then(function (d) { S.data = d; render(); }).catch(function (e) { holdBtn.disabled = false; toast(errMsg(e), true); });
+        }).then(function (d) { S.data = d; render(); });
       });
-      append(wrap, h('div', { class: 'card' }, h('div', { class: 'eyebrow', text: 'Training Flow' }), h('h2', { class: 'title', text: '研修フローの表示' }),
-        h('p', { class: 'small muted', text: '「' + phases[0].name.replace(/^\d+\.\s*/, '') + '」のタスクだけを「セットアップタスク」として残し、ほかの' + (phases.length - 1) + 'フェーズは一旦表示しません。消さずに「タスクマスター（保留）」シートへ移すので、行をタスクマスターに戻せば元に戻ります。' }),
-        holdBtn));
+      append(wrap, h('div', { class: 'card' }, h('div', { class: 'eyebrow', text: 'Training Flow' }), h('h2', { class: 'title', text: '研修フローの整理' }),
+        h('ul', { class: 'small', style: 'margin:0 0 12px;padding-left:1.2em' },
+          ['入社前・諸々の処理・カレンダー徹底・とにかくロープレ → 「セットアップ研修」（チェック）',
+            '依頼コンサル・1ヶ月間のそのほか → 「依頼コンサル」（メモ＋実施日。進捗率に入らない。※伊藤は※小嶋に）',
+            '物件用語・現地、事務処理関連 → 卒業要件「事務作業ワーク」の中身',
+            'ひたすらロープレ → ロープレのページの「ロープレの種類」',
+            '2週間後・1ヶ月・1〜3ヶ月の内容 → 「入社からの目安」の表（2週間後試験のチェックはそのまま）'].map(function (x) { return h('li', { text: x }); })),
+        h('p', { class: 'small muted', text: 'タスクのIDは変わらないので、研修生のチェックは消えません。並べ替えた結果はデータのスプレッドシートの「タスクマスター」の「扱い」列で直せます。' }),
+        flowBtn));
     }
+
+    // マニュアルを旧サイトから作り直す（スマホで改行されない問題の修正用）
+    var rebuildStatus = h('span', { class: 'small muted' });
+    var rebuildBtn = twoStep('マニュアルを作り直す', function (btn) {
+      var rebuilt = 0;
+      var step = function (start) {
+        rebuildStatus.textContent = '作り直し中…（' + rebuilt + '件完了）';
+        return call('api_rebuildManuals', start).then(function (r) {
+          rebuilt += r.rebuilt.length;
+          if (r.next !== null) return step(r.next);
+          rebuildStatus.textContent = '';
+          toast('マニュアルを ' + rebuilt + '件作り直しました');
+          return call('api_bootstrap').then(function (d) { S.data = d; render(); });
+        });
+      };
+      return step(0);
+    });
+    append(wrap, h('div', { class: 'card' }, h('div', { class: 'eyebrow', text: 'Manuals' }), h('h2', { class: 'title', text: 'マニュアルを旧サイトから作り直す' }),
+      h('p', { class: 'small muted', text: '旧Googleサイトのページ内の目次がくっついて、スマホで改行されずに見づらくなっていたマニュアルを作り直します。先に旧サイトの公開範囲を「ウェブ上で一般公開」にしてから押し、終わったら社内のみに戻してください。作り直したマニュアルは新しいドキュメントになり、前のドキュメントはゴミ箱に入ります（ドキュメントを直接直していた場合、その変更は消えます）。' }),
+      h('div', { class: 'row' }, rebuildBtn, rebuildStatus)));
   }
   append(wrap, h('div', { class: 'card' }, h('h2', { class: 'title', text: 'メンバー' }),
     S.data.members.map(function (m) {

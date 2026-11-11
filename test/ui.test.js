@@ -20,6 +20,17 @@ const flowRows = [
   ['依頼コンサル', 'コンサルティング', '■SNSアカウント戦略　※諸本', false, 'インスタアカウント設計'],
   ['※ひたすらロープレ', 'ロールプレイング', '①ヒアリング', false],
   ['', 'ロールプレイング', '②物件提案', false, 'メラビアンも練習のため、動画撮影後モニターに移す'],
+  ['物件用語・現地', 'ワーク', '■賃貸用語＆物件資料ワーク', false, '設備の動画の不明点も同時に確認'],
+  ['事務処理関連', 'ワーク', '■①初期費用見積作成', false],
+  ['', 'ワーク', '■②申込書記入', false],
+  ['2週間後試験\n→インスタ開始', '効果測定', '■ワーク試験', false],
+  ['', '効果測定', '■路線図試験実施　100%', false],
+  ['', '', '★インスタ開始', false, '★１件成約まで上長同席'],
+  ['1カ月間', 'コンサルティング', '■カレンダー徹底させる', false],
+  ['', 'ロールプレイング', '■とにかくロープレ', false],
+  ['', 'コンサルティング', '■マイビジョン設定', false],
+  ['1～3ヵ月目最終日\n→研修生から\nルームアドバイザーへ', '卒業検定', '■原状回復の知識試験', false],
+  ['', '卒業検定', '■新人評価（人物評価シート）', false],
 ];
 const ctx = createContext({ userEmail: 'owner@monochro-inc.com', sourceFlowRows: flowRows, siteImportRows: materials, docExportHtml, examSheets });
 const run = (code) => vm.runInContext(code, ctx);
@@ -28,7 +39,7 @@ run(`api_addMember({name:'小田天誠', email:'t.oda@monochro-inc.com', role:'�
 run(`api_addMember({name:'宮川大輝', email:'miyagawa@monochro-inc.com', role:'研修生', joined:'2026/09/01'})`);
 run(`api_addMember({name:'伊藤竣哉', email:'ito@monochro-inc.com', role:'教育担当'})`);
 ctx.state.userEmail = 'miyagawa@monochro-inc.com';
-run(`api_setCheck('宮川大輝','T001',true); api_setCheck('宮川大輝','T002',true); api_setCheck('宮川大輝','G01',true)`);
+run(`api_setCheck('宮川大輝','T001',true); api_setCheck('宮川大輝','T002',true); api_setCheck('宮川大輝','T013',true); api_setCheck('宮川大輝','T014',true); api_setCheck('宮川大輝','G01',true)`);
 
 const html = fs.readFileSync(path.join(__dirname, '../gas/index.html'), 'utf8');
 const shim = `<script>
@@ -71,15 +82,27 @@ window.google = { script: { url: { getLocation: (cb) => setTimeout(() => cb({ pa
   await p.waitForSelector('text=ルームアドバイザー卒業要件');
   await p.screenshot({ path: path.join(outDir, '1_home_trainee.png'), fullPage: true });
   // 卒業要件のバッジを押すと詳細が開き、達成にできる
+  // 質問の4大原則は現在地のすぐ下
+  const order = await p.evaluate(() => [...document.querySelectorAll('main .card')].slice(0, 3).map((c) => c.textContent.slice(0, 20)));
+  assert.ok(order[1].includes('質問の4大原則'), order.join(' / '));
   await p.click('button.goal:has-text("課題図書")');
-  await p.waitForSelector('.goal-detail:has-text("入社前の課題")');
-  await p.click('.goal-detail button:has-text("達成にする")');
+  await p.waitForSelector('#goal-G01[open]:has-text("入社前の課題")');
+  await p.click('#goal-G01 button:has-text("達成にする")');
   await p.waitForSelector('button.goal.on:has-text("課題図書")');
-  await p.click('button.goal:has-text("ロープレ試験合格")');
-  await p.waitForSelector('.goal-detail .exam-row');
+  await p.waitForTimeout(200);
+  while (await p.locator('.celebrate').count()) await p.click('.celebrate');
+  await p.click('#goal-G07 summary');
+  await p.waitForSelector('#goal-G07 .exam-row');
+  // メモのフェーズ：日付を入れられる
+  await p.click('.phase.memo summary');
+  await p.fill('.memo-date >> nth=0', '2026-11-05');
+  await p.dispatchEvent('.memo-date >> nth=0', 'change');
+  await p.waitForSelector('text=実施日を 2026/11/05 にしました');
   await p.screenshot({ path: path.join(outDir, '1b_goal_detail.png'), fullPage: true });
   await p.locator('label.check', { hasText: '業務契約締結' }).click();
   await p.waitForSelector('text=✓ 小田天誠');
+  await p.waitForTimeout(200);
+  while (await p.locator('.celebrate').count()) await p.click('.celebrate');
   assert.strictEqual(JSON.parse(JSON.stringify(run(`api_getProgress('小田天誠')`))).rows.find((r) => r.id === 'T002').done, true);
 
   await p.click('nav.tabs button:has-text("eラーニング")');
@@ -105,7 +128,8 @@ window.google = { script: { url: { getLocation: (cb) => setTimeout(() => cb({ pa
   await p.click('.reader button:has-text("一覧")');
 
   await p.click('nav.tabs button:has-text("ロープレ")');
-  await p.click('summary:has-text("ロープレを記録する")');
+  await p.click('.rp-kind:has-text("ヒアリング")');
+  assert.strictEqual(await p.inputValue('#rp-topic'), 'ヒアリング');
   await p.selectOption('select >> nth=1', '伊藤竣哉');
   await p.fill('input[list=rp-topics]', '【試験①】カウンセリング面談');
   await p.fill('textarea >> nth=1', '結論から話す');
@@ -142,10 +166,9 @@ window.google = { script: { url: { getLocation: (cb) => setTimeout(() => cb({ pa
   await a.fill('#bulk-members', '山田園佳, yamada@monochro-inc.com\n佐光琴音, sakou@monochro-inc.com, 教育担当');
   await a.click('button:has-text("まとめて登録")');
   await a.waitForSelector('text=2人を登録しました');
-  // セットアップタスクだけにする（2回押して実行）
-  await a.click('button:has-text("セットアップタスクだけにする")');
-  await a.click('button:has-text("もう一度押すと実行します")');
-  await a.waitForSelector('text=保留にしました');
+  // 研修フローはsetupで整理済みなので、整理ボタンは出ない。マニュアル作り直しのボタンはある
+  assert.strictEqual(await a.locator('text=研修フローを新しい形に整理する').count(), 0);
+  await a.waitForSelector('button:has-text("マニュアルを作り直す")');
   await a.fill('input[placeholder="例：山田太郎"]', '新人 花子');
   await a.fill('input[type=email]', 'hanako@monochro-inc.com');
   await a.click('button:has-text("追加する")');
@@ -153,7 +176,11 @@ window.google = { script: { url: { getLocation: (cb) => setTimeout(() => cb({ pa
   await a.screenshot({ path: path.join(outDir, '7_admin.png'), fullPage: true });
   await a.click('nav.tabs button:has-text("卒業フロー")');
   await a.waitForSelector('text=NOW');
-  await a.waitForSelector('.timeline.single summary:has-text("セットアップタスク")');
+  await a.waitForSelector('.phase summary:has-text("セットアップ研修")');
+  await a.click('#goal-G04 summary');
+  await a.waitForSelector('#goal-G04 label.check:has-text("初期費用見積作成")');
+  await a.locator('.guide').scrollIntoViewIfNeeded();
+  await a.screenshot({ path: path.join(outDir, '8b_roadmap_pc.png'), fullPage: true });
   await a.screenshot({ path: path.join(outDir, '8_home_admin_pc.png'), fullPage: true });
 
   // ロープレ試験：研修生が実施 → 教育担当が評価 → 結果
