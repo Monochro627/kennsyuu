@@ -68,8 +68,16 @@ window.google = { script: { url: { getLocation: (cb) => setTimeout(() => cb({ pa
 
   // 研修生（スマホ幅）
   const p = await open('t.oda@monochro-inc.com', 390);
-  await p.waitForSelector('text=卒業条件');
+  await p.waitForSelector('text=ルームアドバイザー卒業要件');
   await p.screenshot({ path: path.join(outDir, '1_home_trainee.png'), fullPage: true });
+  // 卒業要件のバッジを押すと詳細が開き、達成にできる
+  await p.click('button.goal:has-text("課題図書")');
+  await p.waitForSelector('.goal-detail:has-text("入社前の課題")');
+  await p.click('.goal-detail button:has-text("達成にする")');
+  await p.waitForSelector('button.goal.on:has-text("課題図書")');
+  await p.click('button.goal:has-text("ロープレ試験合格")');
+  await p.waitForSelector('.goal-detail .exam-row');
+  await p.screenshot({ path: path.join(outDir, '1b_goal_detail.png'), fullPage: true });
   await p.locator('label.check', { hasText: '業務契約締結' }).click();
   await p.waitForSelector('text=✓ 小田天誠');
   assert.strictEqual(JSON.parse(JSON.stringify(run(`api_getProgress('小田天誠')`))).rows.find((r) => r.id === 'T002').done, true);
@@ -119,7 +127,25 @@ window.google = { script: { url: { getLocation: (cb) => setTimeout(() => cb({ pa
   // 管理者（PC幅）
   const a = await open('owner@monochro-inc.com', 1200);
   await a.waitForSelector('text=表示中の研修生');
+  // 試験の実施画面で評価者をその場で登録できる
+  await a.click('nav.tabs button:has-text("ロープレ")');
+  await a.click('button:has-text("試験を実施")');
+  await a.click('.modal summary:has-text("評価者がいないとき")');
+  await a.fill('#ev-name', '諸本雅広');
+  await a.fill('#ev-mail', 'morimoto@monochro-inc.com');
+  await a.click('.modal button:has-text("登録して選ぶ")');
+  await a.waitForSelector('.chk-list label:has-text("諸本雅広") input:checked');
+  await a.screenshot({ path: path.join(outDir, '10b_exam_add_evaluator.png') });
+  await a.click('.modal .close');
   await a.click('nav.tabs button:has-text("管理")');
+  // まとめて登録
+  await a.fill('#bulk-members', '山田園佳, yamada@monochro-inc.com\n佐光琴音, sakou@monochro-inc.com, 教育担当');
+  await a.click('button:has-text("まとめて登録")');
+  await a.waitForSelector('text=2人を登録しました');
+  // セットアップタスクだけにする（2回押して実行）
+  await a.click('button:has-text("セットアップタスクだけにする")');
+  await a.click('button:has-text("もう一度押すと実行します")');
+  await a.waitForSelector('text=保留にしました');
   await a.fill('input[placeholder="例：山田太郎"]', '新人 花子');
   await a.fill('input[type=email]', 'hanako@monochro-inc.com');
   await a.click('button:has-text("追加する")');
@@ -127,6 +153,7 @@ window.google = { script: { url: { getLocation: (cb) => setTimeout(() => cb({ pa
   await a.screenshot({ path: path.join(outDir, '7_admin.png'), fullPage: true });
   await a.click('nav.tabs button:has-text("卒業フロー")');
   await a.waitForSelector('text=NOW');
+  await a.waitForSelector('.timeline.single summary:has-text("セットアップタスク")');
   await a.screenshot({ path: path.join(outDir, '8_home_admin_pc.png'), fullPage: true });
 
   // ロープレ試験：研修生が実施 → 教育担当が評価 → 結果
@@ -165,7 +192,7 @@ window.google = { script: { url: { getLocation: (cb) => setTimeout(() => cb({ pa
   await m.waitForSelector('text=黒から、白へ。');
   await m.screenshot({ path: path.join(outDir, '0_hero_miyagawa.png') });
   await m.locator('label.check', { hasText: 'Gmail登録' }).click();
-  await m.waitForSelector('.celebrate:has-text("PHASE CLEAR")');
+  await m.waitForSelector('.celebrate');
   await m.waitForTimeout(600);
   await m.screenshot({ path: path.join(outDir, '9_celebrate.png') });
 

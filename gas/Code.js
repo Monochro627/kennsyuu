@@ -134,10 +134,40 @@ function createProgressSheet_(traineeName) {
   return sh;
 }
 
-function readProgress_(traineeName) {
+/** 今の卒業条件とタスクマスターにある項目（[ID, 種類, フェーズ, カテゴリ, 内容] の並び） */
+function currentItems_() {
+  var items = readTable_(sheet_(SHEET.GOALS)).map(function (g) {
+    return [String(g['ID']), '卒業条件', '卒業条件', '', g['条件']];
+  });
+  readTable_(sheet_(SHEET.TASKS)).forEach(function (t) {
+    items.push([String(t['ID']), 'タスク', t['フェーズ'], t['カテゴリ'], t['タスク']]);
+  });
+  return items;
+}
+
+/** タスクマスターに増えた項目を、研修生の進捗シートに足す（保留から戻したときなど） */
+function syncProgressSheet_(traineeName) {
+  var sh = db_().getSheetByName(progressSheetName_(traineeName));
+  if (!sh) return;
+  var have = {};
+  readTable_(sh).forEach(function (r) { have[String(r['ID'])] = true; });
+  var add = currentItems_().filter(function (it) { return !have[it[0]]; })
+    .map(function (it) { return it.concat([false, '', '']); });
+  if (!add.length) return;
+  var start = sh.getLastRow() + 1;
+  sh.getRange(start, 1, add.length, PROGRESS_HEADERS.length).setValues(add);
+  sh.getRange(start, 6, add.length, 1).insertCheckboxes();
+}
+
+/** 研修生の進捗。今の卒業条件・タスクマスターにない項目（保留にしたタスクなど）は数えない */
+function readProgress_(traineeName, validIds) {
   var sh = db_().getSheetByName(progressSheetName_(traineeName));
   if (!sh) return [];
-  return readTable_(sh).map(function (r) {
+  if (!validIds) {
+    validIds = {};
+    currentItems_().forEach(function (it) { validIds[it[0]] = true; });
+  }
+  return readTable_(sh).filter(function (r) { return validIds[String(r['ID'])]; }).map(function (r) {
     return {
       id: String(r['ID']),
       kind: r['種類'],
@@ -217,8 +247,10 @@ function summaries_(members) {
   tasks.forEach(function (t) { phaseOf[String(t['ID'])] = t['フェーズ']; });
   var required = requiredVideoIds_();
   var index = activityIndex_();
+  var validIds = {};
+  currentItems_().forEach(function (it) { validIds[it[0]] = true; });
   return members.filter(function (m) { return m.role === ROLE.TRAINEE && m.status !== '退職'; }).map(function (m) {
-    var rows = readProgress_(m.name);
+    var rows = readProgress_(m.name, validIds);
     var done = rows.filter(function (r) { return r.done; });
     var goals = rows.filter(function (r) { return r.kind === '卒業条件'; });
     var nextTask = rows.filter(function (r) { return r.kind === 'タスク' && !r.done; })[0];
@@ -281,6 +313,7 @@ function api_getProgress(traineeName) {
   currentUser_();
   var trainee = members_().filter(function (m) { return m.name === traineeName; })[0];
   if (!trainee) throw new Error('研修生「' + traineeName + '」が見つかりません。');
+  syncProgressSheet_(traineeName);
   var rows = readProgress_(traineeName);
   var act = activityOf_(activityIndex_(), trainee);
   return { name: traineeName, rows: rows, watched: Object.keys(act.e.ids), examsPassed: act.exams, stats: stats_(rows, act) };
@@ -375,6 +408,65 @@ function api_addMember(m) {
     sheet_(SHEET.MEMBERS).appendRow([name, email, m.role, m.joined || '', '在籍', '']);
     if (m.role === ROLE.TRAINEE) createProgressSheet_(name);
     return { name: name };
+  });
+}
+
+/**
+ * メンバーをまとめて追加する（管理者のみ）。list は [{name, email, role}]。
+ * すでにいる人（同じ名前かメール）は飛ばし、追加した人と飛ばした人を返す。
+ */
+function api_addMembers(list) {
+  var me = currentUser_();
+  requireAdmin_(me);
+  var added = [];
+  var skipped = [];
+  (list || []).forEach(function (m) {
+    try {
+      api_addMember(m);
+      added.push(String(m.name).trim());
+    } catch (e) {
+      skipped.push(String(m.name || m.email || '').trim() + '（' + e.message + '）');
+    }
+  });
+  return { added: added, skipped: skipped };
+}
+
+/**
+ * 研修フローを「セットアップタスク」だけにする（管理者のみ）。
+ * 最初のフェーズ以外のタスクは「タスクマスター（保留）」シートに移す（消さない）。
+ * 戻すときは保留シートの行をタスクマスターに戻せば、研修生の進捗シートにも自動で足される。
+ */
+var SETUP_PHASE = 'セットアップタスク';
+var TASKS_ON_HOLD = 'タスクマスター（保留）';
+function api_useSetupTasksOnly() {
+  var me = currentUser_();
+  requireAdmin_(me);
+  return withLock_(function () {
+    var ss = db_();
+    var sh = sheet_(SHEET.TASKS);
+    var values = sh.getDataRange().getValues();
+    var header = values.shift();
+    if (!values.length) return { kept: 0, held: 0 };
+    var first = values[0][1];
+    var keep = [];
+    var hold = [];
+    values.forEach(function (r) {
+      if (r.join('') === '') return;
+      if (r[1] === first || r[1] === SETUP_PHASE) keep.push([r[0], SETUP_PHASE].concat(r.slice(2)));
+      else hold.push(r);
+    });
+    if (hold.length) {
+      var holdSh = ss.getSheetByName(TASKS_ON_HOLD);
+      if (!holdSh) {
+        holdSh = ss.insertSheet(TASKS_ON_HOLD);
+        holdSh.getRange(1, 1, 1, header.length).setValues([header]).setFontWeight('bold').setBackground('#e8eaf6');
+        holdSh.setFrozenRows(1);
+      }
+      holdSh.getRange(holdSh.getLastRow() + 1, 1, hold.length, header.length).setValues(hold);
+    }
+    sh.getRange(2, 1, values.length, header.length).clearContent();
+    if (keep.length) sh.getRange(2, 1, keep.length, header.length).setValues(keep);
+    return { kept: keep.length, held: hold.length };
   });
 }
 

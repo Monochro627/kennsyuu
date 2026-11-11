@@ -114,6 +114,29 @@
   .badge.new svg { animation: pop .7s ease; }
   @keyframes pop { 0% { transform: scale(.4); } 70% { transform: scale(1.15); } 100% { transform: scale(1); } }
 
+  /* 卒業要件のバッジ */
+  .goal-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  @media (min-width: 760px) { .goal-grid { grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 8px; } }
+  .goal { border: 1px solid var(--line); background: #fff; border-radius: 14px; padding: 10px 6px 10px; cursor: pointer; font: inherit; color: var(--mute); display: flex; flex-direction: column; align-items: center; gap: 4px; transition: border-color .2s, transform .15s; }
+  .goal:hover { border-color: var(--g5); }
+  .goal:active { transform: scale(.97); }
+  .goal:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .goal svg { width: 52px; height: 58px; }
+  .goal.on { color: var(--ink); }
+  .goal.open { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
+  .goal .gname { font-size: .68rem; line-height: 1.35; text-align: center; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.7em; }
+  .goal.on .gname { font-weight: 700; }
+  .goal-detail { margin-top: 14px; border: 1.5px solid var(--ink); border-radius: 16px; padding: 16px; animation: rise .25s; }
+  .goal-detail .gno { font: 800 .8rem var(--en); background: var(--ink); color: #fff; border-radius: 6px; padding: 3px 8px; }
+  .gx { margin-top: 12px; padding: 12px; background: var(--paper); border-radius: 12px; }
+  .exam-list { display: grid; gap: 4px; }
+  .exam-row { display: flex; align-items: center; gap: 8px; font-size: .85rem; }
+  .exam-row i { width: 20px; height: 20px; border-radius: 50%; border: 1.3px solid var(--g5); font: 800 .6rem/17px var(--en); text-align: center; font-style: normal; color: var(--g4); flex: none; }
+  .exam-row span { flex: 1; min-width: 0; }
+  .exam-row b { font-size: .75rem; color: var(--mute); }
+  .exam-row.ok i { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .exam-row.ok b { color: var(--ink); }
+
   /* チェックリスト */
   .check { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; border-top: 1px solid var(--line); cursor: pointer; position: relative; }
   .check:first-child { border-top: 0; }
@@ -136,6 +159,8 @@
   .timeline { position: relative; padding-left: 30px; }
   .timeline::before { content: ""; position: absolute; left: 11px; top: 10px; bottom: 10px; width: 2px; background: var(--line); }
   .phase { position: relative; margin-bottom: 12px; }
+  .timeline.single { padding-left: 0; }
+  .timeline.single::before, .timeline.single .node { display: none; }
   .phase .node { position: absolute; left: -30px; top: 15px; width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--g5); background: var(--paper); display: grid; place-items: center; font: 800 .62rem var(--en); color: var(--g4); }
   .phase.done .node { background: var(--ink); border-color: var(--ink); color: #fff; }
   .phase.current .node { border-color: var(--ink); color: var(--ink); box-shadow: 0 0 0 5px rgba(13,13,13,.1); }
@@ -346,7 +371,7 @@ var ROLEPLAY_TOPICS = ['【試験①】カウンセリング面談', '【試験�
   '初期費用の説明', '申込み後の流れ', 'クロージング', 'アウトトーク', '紹介依頼'];
 var PRINCIPLES = ['質問なき指導は行わない', '「どうすればいいですか？」は絶対NG', 'メモ無き同じ質問は絶対NG', '必ず自分で調べてから質問'];
 
-var S = { data: null, tab: 'home', trainee: null, progress: null, roleplays: null, notes: null, filter: '', sort: 'percent', seenBadges: null };
+var S = { data: null, tab: 'home', trainee: null, progress: null, roleplays: null, notes: null, filter: '', sort: 'percent', openGoal: null };
 
 // ---------- 共通 ----------
 function call(fn) {
@@ -555,7 +580,7 @@ function loadProgress(name) {
   S.loadingFor = name;
   call('api_getProgress', name).then(function (p) {
     S.loadingFor = null;
-    if (S.trainee === name) { S.progress = p; S.seenBadges = null; renderChip(); if (S.tab === 'home') render(); }
+    if (S.trainee === name) { S.progress = p; renderChip(); if (S.tab === 'home') render(); }
   }).catch(function (e) { S.loadingFor = null; toast(errMsg(e), true); });
 }
 function canEdit() { return isStaff() || S.data.me.name === S.trainee; }
@@ -586,22 +611,6 @@ function snapshot() {
   return { pct: pct, stage: stageOf(pct), phasesDone: phasesDone, tasksDone: tasksDone, goalsDone: goalsDone,
     goalsTotal: S.data.goals.length, reqDone: reqDone, reqTotal: req.length, stats: S.progress.stats };
 }
-var BADGES = [
-  { g: '01', name: 'はじめの一歩', ok: function (s) { return s.tasksDone >= 1; } },
-  { g: '10', name: 'タスク10', ok: function (s) { return s.tasksDone >= 10; } },
-  { g: '30', name: 'タスク30', ok: function (s) { return s.tasksDone >= 30; } },
-  { g: 'PH', name: 'フェーズ制覇', ok: function (s) { return s.phasesDone >= 1; } },
-  { g: '1/2', name: '折り返し', ok: function (s) { return s.pct >= 50; } },
-  { g: '▶10', name: '動画10本', ok: function (s) { return s.stats.videos >= 10; } },
-  { g: '★', name: '必須動画コンプ', ok: function (s) { return s.reqTotal && s.reqDone === s.reqTotal; } },
-  { g: 'RP', name: '初ロープレ', ok: function (s) { return s.stats.roleplays >= 1; } },
-  { g: 'RP10', name: 'ロープレ10回', ok: function (s) { return s.stats.roleplays >= 10; } },
-  { g: 'EX', name: '試験初合格', ok: function (s) { return s.stats.exams >= 1; } },
-  { g: 'EX7', name: '試験全合格', ok: function (s) { return S.data.exams.length && s.stats.exams >= S.data.exams.length; } },
-  { g: '3D', name: '3日連続', ok: function (s) { return s.stats.streak >= 3; } },
-  { g: '7D', name: '7日連続', ok: function (s) { return s.stats.streak >= 7; } },
-  { g: 'RA', name: 'ルームアドバイザー', ok: function (s) { return s.goalsTotal && s.goalsDone === s.goalsTotal; } }
-];
 
 function viewHome() {
   var wrap = h('div');
@@ -663,31 +672,12 @@ function viewHome() {
     append(wrap, h('div', { class: 'card' }, h('div', { class: 'eyebrow', text: 'Next Action' }), h('h2', { class: 'title', text: '次にやること' }), next));
   }
 
-  // バッジ
-  var seen = S.seenBadges;
-  var row = h('div', { class: 'badges' });
-  var nowOn = [];
-  BADGES.forEach(function (b, i) {
-    var on = !!b.ok(snap);
-    if (on) nowOn.push(i);
-    append(row, h('div', { class: 'badge' + (on ? ' on' : '') + (on && seen && seen.indexOf(i) < 0 ? ' new' : '') }, badgeSvg(b.g, on), b.name));
-  });
-  S.seenBadges = nowOn;
-  append(wrap, h('div', { class: 'card' }, h('div', { class: 'row' }, h('div', null, h('div', { class: 'eyebrow', text: 'Badges' }), h('h2', { class: 'title', style: 'margin-bottom:6px', text: 'バッジ' })),
-    h('div', { class: 'spacer' }), h('span', { class: 'pill', text: nowOn.length + ' / ' + BADGES.length })), row));
+  // 卒業要件（バッジ）。押すと下に詳細が開く
+  append(wrap, goalBadges(snap, st, editable));
 
-  // 卒業条件
-  var goalBox = h('div', { class: 'card' }, h('div', { class: 'eyebrow', text: 'Graduation' }), h('h2', { class: 'title', text: 'ルームアドバイザー卒業条件' }));
-  S.data.goals.forEach(function (g, i) {
-    var extra = g.id === 'G02' ? h('span', { class: 'pill', style: 'margin-left:6px', text: snap.reqDone + ' / ' + snap.reqTotal }) :
-      g.id === 'G07' ? examChips(S.progress.examsPassed || []) : null;
-    append(goalBox, checkRow(g.id, g.title, g.detail, extra, st[g.id], editable, ('0' + (i + 1)).slice(-2), PT.goal));
-  });
-  append(wrap, goalBox);
-
-  // 研修フロー
-  append(wrap, h('div', { class: 'section-head' }, h('h2', { text: '研修フロー' }), h('span', { class: 'en', text: 'TRAINING FLOW' })));
-  var tl = h('div', { class: 'timeline' });
+  // セットアップタスク（研修フロー）
+  if (phases.length > 1) append(wrap, h('div', { class: 'section-head' }, h('h2', { text: '研修フロー' }), h('span', { class: 'en', text: 'TRAINING FLOW' })));
+  var tl = h('div', { class: 'timeline' + (phases.length === 1 ? ' single' : '') });
   phases.forEach(function (p, i) {
     var d = p.tasks.filter(function (t) { return st[t.id] && st[t.id].done; }).length;
     var done = d === p.tasks.length;
@@ -698,7 +688,8 @@ function viewHome() {
           i === current ? h('span', { class: 'pill solid', text: 'NOW' }) : null,
           h('div', { class: 'mini' }, h('div', { class: 'small', style: 'text-align:right;font:700 .7rem Montserrat', text: d + '/' + p.tasks.length }), h('div', { class: 'bar' }, h('i', { style: 'width:' + (d * 100 / p.tasks.length) + '%' })))),
         h('div', { class: 'body' }, p.tasks.map(function (t) {
-          return checkRow(t.id, t.title, t.point, t.category ? h('span', { class: 'pill jp', style: 'margin-left:6px', text: t.category }) : null, st[t.id], editable, null, PT.task);
+          var cat = t.category && t.category !== t.title && t.category !== p.name ? h('span', { class: 'pill jp', style: 'margin-left:6px', text: t.category }) : null;
+          return checkRow(t.id, t.title, t.point, cat, st[t.id], editable, null, PT.task);
         })))));
   });
   append(wrap, tl);
@@ -709,6 +700,54 @@ function viewHome() {
     h('ol', null, PRINCIPLES.map(function (p) { return h('li', { text: p }); })),
     h('p', { class: 'small muted', text: 'マニュアルにあるものは確認したうえで、それでも分からない点を質問しましょう。' })));
   return wrap;
+}
+
+/** 卒業要件9個を六角形のバッジで並べ、押したものの詳細を下に開く */
+function goalBadges(snap, st, editable) {
+  var done = S.data.goals.filter(function (g) { return st[g.id] && st[g.id].done; }).length;
+  var grid = h('div', { class: 'goal-grid' });
+  S.data.goals.forEach(function (g, i) {
+    var on = !!(st[g.id] && st[g.id].done);
+    var no = ('0' + (i + 1)).slice(-2);
+    append(grid, h('button', { type: 'button', class: 'goal' + (on ? ' on' : '') + (S.openGoal === g.id ? ' open' : ''), 'aria-expanded': S.openGoal === g.id ? 'true' : 'false',
+      onclick: function () { S.openGoal = S.openGoal === g.id ? null : g.id; render(); } },
+      badgeSvg(no, on), h('span', { class: 'gname', text: g.title.replace(/（.*?）/g, '') })));
+  });
+  var card = h('div', { class: 'card' }, h('div', { class: 'row' },
+    h('div', null, h('div', { class: 'eyebrow', text: 'Graduation' }), h('h2', { class: 'title', style: 'margin-bottom:6px', text: 'ルームアドバイザー卒業要件' })),
+    h('div', { class: 'spacer' }), h('span', { class: 'pill' + (done === S.data.goals.length ? ' solid' : ''), text: done + ' / ' + S.data.goals.length })),
+    h('p', { class: 'small muted', style: 'margin:0 0 12px', text: 'バッジを押すと、くわしい内容が開きます。9個すべて点灯したらルームアドバイザーです。' }), grid);
+  var open = S.data.goals.filter(function (g) { return g.id === S.openGoal; })[0];
+  if (open) append(card, goalDetail(open, S.data.goals.indexOf(open), st[open.id], snap, editable));
+  return card;
+}
+function goalDetail(g, i, state, snap, editable) {
+  var on = !!(state && state.done);
+  var extra = null;
+  if (g.id === 'G02') {
+    var pct = snap.reqTotal ? Math.round(snap.reqDone * 100 / snap.reqTotal) : 0;
+    extra = h('div', { class: 'gx' }, h('div', { class: 'row small' }, h('span', { text: '必須動画（★①〜⑥）' }), h('div', { class: 'spacer' }), h('b', { text: snap.reqDone + ' / ' + snap.reqTotal + ' 本' })),
+      h('div', { class: 'bar', style: 'margin-top:6px' }, h('i', { style: 'width:' + pct + '%' })),
+      h('button', { class: 'btn ghost', style: 'margin-top:10px', text: 'eラーニングを開く', onclick: function () { go('elearning'); } }));
+  } else if (g.id === 'G07') {
+    var passed = S.progress.examsPassed || [];
+    extra = h('div', { class: 'gx' }, h('div', { class: 'small', style: 'margin-bottom:6px', text: '合格した試験：' + passed.length + ' / ' + S.data.exams.length }),
+      h('div', { class: 'exam-list' }, S.data.exams.map(function (e) {
+        var ok = passed.indexOf(e.id) >= 0;
+        return h('div', { class: 'exam-row' + (ok ? ' ok' : '') }, h('i', { text: examNo(e.name) }), h('span', { text: e.name.replace(/【試験.】/, '') }), h('b', { text: ok ? '合格' : '未' }));
+      })),
+      h('button', { class: 'btn ghost', style: 'margin-top:10px', text: 'ロープレ試験へ', onclick: function () { go('roleplay'); } }));
+  }
+  var btn = editable ? h('button', { class: 'btn' + (on ? ' ghost' : ''), text: on ? '達成を取り消す' : '達成にする（+' + PT.goal + 'pt）' }) : null;
+  if (btn) btn.addEventListener('click', function () { toggle(g.id, !on, btn); });
+  return h('div', { class: 'goal-detail' },
+    h('div', { class: 'row' }, h('span', { class: 'gno', text: ('0' + (i + 1)).slice(-2) }), h('strong', { style: 'flex:1;min-width:0', text: g.title }),
+      h('span', { class: 'pill' + (on ? ' solid' : ''), text: on ? '達成' : '未達成' })),
+    g.detail ? h('p', { style: 'margin:10px 0 0', text: g.detail }) : null,
+    on && state.by ? h('div', { class: 'small muted', style: 'margin-top:6px', text: '✓ ' + state.by + '　' + state.at }) : null,
+    extra,
+    h('div', { class: 'row', style: 'margin-top:14px' }, btn,
+      h('button', { class: 'btn ghost', text: '閉じる', onclick: function () { S.openGoal = null; render(); } })));
 }
 
 function checkRow(id, title, detail, extra, st, editable, num, pt) {
@@ -1114,6 +1153,29 @@ function openExamStart() {
   };
   trainee.addEventListener('change', drawEvaluators);
   drawEvaluators();
+  // 評価者がメンバー表にいないときは、管理者がその場で登録できる
+  var addBox = null;
+  if (S.data.me.role === '管理者') {
+    var nName = h('input', { id: 'ev-name', placeholder: '名前（例：諸本雅広）' });
+    var nMail = h('input', { id: 'ev-mail', type: 'email', placeholder: '会社のメール' });
+    var nBtn = h('button', { class: 'btn ghost', type: 'button', text: '登録して選ぶ' });
+    nBtn.addEventListener('click', function () {
+      nBtn.disabled = true;
+      var name = nName.value.trim();
+      call('api_addMember', { name: name, email: nMail.value, role: '教育担当' }).then(function () { return call('api_bootstrap'); }).then(function (d) {
+        S.data = d;
+        drawEvaluators();
+        var cb = evalBox.querySelector('input[value="' + name.replace(/"/g, '') + '"]');
+        if (cb) cb.checked = true;
+        nName.value = ''; nMail.value = '';
+        nBtn.disabled = false;
+        toast(name + ' さんを教育担当として登録しました');
+      }).catch(function (e) { nBtn.disabled = false; toast(errMsg(e), true); });
+    });
+    addBox = h('details', { class: 'note', style: 'border-style:solid' }, h('summary', { style: 'cursor:pointer;font-weight:700', text: '＋ 評価者がいないとき：ここで登録' }),
+      h('p', { class: 'small muted', text: '評価者は自分のスマホでアプリを開いて採点するので、会社のメールで登録が必要です。教育担当として登録されます。' }),
+      h('div', { class: 'grid2' }, nName, nMail), h('div', { style: 'margin-top:8px' }, nBtn));
+  }
   var now = new Date();
   var btn = h('button', { class: 'btn', text: '実施する' });
   btn.addEventListener('click', function () {
@@ -1131,6 +1193,7 @@ function openExamStart() {
     h('label', { class: 'field' }, '試験', exam),
     h('div', { class: 'grid2' }, h('label', { class: 'field' }, '実践者', trainee), h('label', { class: 'field' }, 'ロープレ設定No.', setting)),
     h('div', { class: 'field' }, '評価者（複数選べます）', evalBox),
+    addBox,
     h('div', { style: 'margin-top:14px' }, btn)]);
 }
 function examById(id) { return S.data.exams.filter(function (e) { return e.id === id; })[0]; }
@@ -1297,6 +1360,42 @@ function viewAdmin() {
       h('div', { class: 'grid2' }, h('label', { class: 'field' }, '名前', f.name), h('label', { class: 'field' }, 'メール（会社のGoogleアカウント）', f.email),
         h('label', { class: 'field' }, '役割', f.role), h('label', { class: 'field' }, '入社日', f.joined)),
       h('p', { class: 'small muted', text: '研修生を追加すると、その人の進捗シートが自動で作られます。' }), btn));
+  }
+  if (S.data.me.role === '管理者') {
+    var bulk = h('textarea', { id: 'bulk-members', placeholder: '諸本雅広, morimoto@monochro-inc.com\n山田園佳, yamada@monochro-inc.com, 教育担当\n新人 太郎, taro@monochro-inc.com, 研修生' });
+    var bulkBtn = h('button', { class: 'btn', text: 'まとめて登録' });
+    bulkBtn.addEventListener('click', function () {
+      var list = bulk.value.split(/\n/).map(function (l) { return l.split(/[,、\t]/).map(function (x) { return x.trim(); }); })
+        .filter(function (a) { return a[0]; }).map(function (a) { return { name: a[0], email: a[1] || '', role: a[2] || '教育担当' }; });
+      if (!list.length) { toast('1行に「名前, メール, 役割」で入力してください', true); return; }
+      bulkBtn.disabled = true;
+      call('api_addMembers', list).then(function (r) {
+        toast(r.added.length + '人を登録しました' + (r.skipped.length ? '（' + r.skipped.length + '人は登録済みなどで飛ばしました）' : ''));
+        if (r.skipped.length) setTimeout(function () { toast('飛ばした人：' + r.skipped.join('／'), true); }, 2500);
+        return call('api_bootstrap');
+      }).then(function (d) { S.data = d; render(); }).catch(function (e) { bulkBtn.disabled = false; toast(errMsg(e), true); });
+    });
+    append(wrap, h('div', { class: 'card' }, h('div', { class: 'eyebrow', text: 'Bulk' }), h('h2', { class: 'title', text: 'まとめて登録' }),
+      h('p', { class: 'small muted', text: '1行に1人、「名前, メール, 役割」で入力します。役割を省くと教育担当になります（研修生・教育担当・管理者）。' }),
+      bulk, h('div', { style: 'margin-top:10px' }, bulkBtn)));
+
+    var phases = phasesOf();
+    if (phases.length > 1) {
+      var holdBtn = h('button', { class: 'btn ghost', text: 'セットアップタスクだけにする' });
+      var armed = false;
+      holdBtn.addEventListener('click', function () {
+        if (!armed) { armed = true; holdBtn.textContent = 'もう一度押すと実行します'; return; }
+        holdBtn.disabled = true;
+        call('api_useSetupTasksOnly').then(function (r) {
+          toast('セットアップタスク ' + r.kept + '件を残し、' + r.held + '件を保留にしました');
+          S.progress = null;
+          return call('api_bootstrap');
+        }).then(function (d) { S.data = d; render(); }).catch(function (e) { holdBtn.disabled = false; toast(errMsg(e), true); });
+      });
+      append(wrap, h('div', { class: 'card' }, h('div', { class: 'eyebrow', text: 'Training Flow' }), h('h2', { class: 'title', text: '研修フローの表示' }),
+        h('p', { class: 'small muted', text: '「' + phases[0].name.replace(/^\d+\.\s*/, '') + '」のタスクだけを「セットアップタスク」として残し、ほかの' + (phases.length - 1) + 'フェーズは一旦表示しません。消さずに「タスクマスター（保留）」シートへ移すので、行をタスクマスターに戻せば元に戻ります。' }),
+        holdBtn));
+    }
   }
   append(wrap, h('div', { class: 'card' }, h('h2', { class: 'title', text: 'メンバー' }),
     S.data.members.map(function (m) {

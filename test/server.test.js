@@ -152,6 +152,30 @@ const man = run(`api_getManual('MAN-01')`);
 assert.ok(man.html.includes('本文'));
 assert.strictEqual(man.canEdit, false);
 
+// まとめて登録（既にいる人は飛ばす）
+as('owner@monochro-inc.com');
+const bulk = run(`api_addMembers([{name:'山田園佳', email:'yamada@monochro-inc.com', role:'教育担当'}, {name:'伊藤竣哉', email:'ito@monochro-inc.com', role:'教育担当'}])`);
+assert.deepStrictEqual(bulk.added, ['山田園佳']);
+assert.strictEqual(bulk.skipped.length, 1);
+
+// 研修フローをセットアップタスクだけにする（ほかは保留シートへ。進捗の数え方からも外れる）
+const beforeRows = run(`api_getProgress('小田天誠')`).rows.length;
+const held = run('api_useSetupTasksOnly()');
+assert.deepStrictEqual(held, { kept: 2, held: 5 });
+const tasksNow = run('api_bootstrap()').tasks;
+assert.deepStrictEqual([...new Set(tasksNow.map((t) => t.phase))], ['セットアップタスク']);
+const after = run(`api_getProgress('小田天誠')`);
+assert.strictEqual(after.rows.length, beforeRows - 5);
+assert.strictEqual(run('api_useSetupTasksOnly()').held, 0, 'idempotent');
+// 保留から1行戻すと、進捗シートにも自動で足される
+const ss = ctx.books[Object.keys(ctx.books).find((k) => ctx.books[k].name === '研修アプリデータ ※社外秘')];
+const holdSh = ss.getSheetByName('タスクマスター（保留）');
+ss.getSheetByName('タスクマスター').appendRow(holdSh.getRange(2, 1, 1, 5).getValues()[0]);
+ss.getSheetByName('タスクマスター').appendRow(['T099', 'セットアップタスク', '', '新しいタスク', '']);
+assert.strictEqual(run(`api_getProgress('小田天誠')`).rows.length, beforeRows - 5 + 2);
+as('t.oda@monochro-inc.com');
+assert.strictEqual(run(`api_setCheck('小田天誠', 'T099', true)`).done, true);
+
 // メンバー表にいない人は使えない
 as('stranger@example.com');
 assert.throws(() => run('api_bootstrap()'), /権限がありません/);
