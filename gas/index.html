@@ -493,13 +493,25 @@ function boot() {
     else S.trainee = (trainees()[0] || {}).name || null;
     var hash = location.hash.replace('#', '');
     if (TABS.some(function (t) { return t.id === hash; })) S.tab = hash;
-    renderChip();
-    renderTabs();
-    render();
+    // ?tab=roleplay のように開くと、そのタブから始める（見込みボードの左メニューから直接開くため）
+    openTabFromUrl(function () {
+      renderChip();
+      renderTabs();
+      render();
+    });
   }).catch(function (e) {
     var v = document.getElementById('view');
     v.innerHTML = '';
     append(v, h('div', { class: 'card' }, emptyArt(), h('h2', { class: 'title', text: 'ひらけませんでした' }), h('p', { text: errMsg(e) })));
+  });
+}
+function openTabFromUrl(done) {
+  var url = window.google && google.script && google.script.url;
+  if (!url) { done(); return; }
+  url.getLocation(function (loc) {
+    var tab = loc && loc.parameter && loc.parameter.tab;
+    if (TABS.some(function (t) { return t.id === tab && (!t.staff || isStaff()); })) S.tab = tab;
+    done();
   });
 }
 function myStats() {

@@ -32,7 +32,7 @@ run(`api_setCheck('宮川大輝','T001',true); api_setCheck('宮川大輝','T002
 
 const html = fs.readFileSync(path.join(__dirname, '../gas/index.html'), 'utf8');
 const shim = `<script>
-window.google = { script: { get run() {
+window.google = { script: { url: { getLocation: (cb) => setTimeout(() => cb({ parameter: window.__tab ? { tab: window.__tab } : {}, hash: '' }), 10) }, get run() {
   const handlers = {};
   const proxy = new Proxy({}, { get(_, name) {
     if (name === 'withSuccessHandler') return (f) => { handlers.ok = f; return proxy; };
@@ -49,7 +49,7 @@ window.google = { script: { get run() {
 (async () => {
   const browser = await chromium.launch();
   const errors = [];
-  async function open(email, width) {
+  async function open(email, width, tab) {
     const page = await browser.newPage({ viewport: { width, height: 900 } });
     page.on('pageerror', (e) => errors.push(e.message));
     await page.exposeFunction('__gas', (name, argsJson) => {
@@ -61,6 +61,7 @@ window.google = { script: { get run() {
       } catch (e) { return JSON.stringify({ error: e.message }); }
     });
     await page.route('**/*', (r) => r.request().url().startsWith('http://app.local') ? r.fulfill({ contentType: 'text/html', body: html.replace('<head>', '<head>' + shim) }) : r.abort());
+    await page.addInitScript((t) => { window.__tab = t; }, tab || '');
     await page.goto('http://app.local/');
     return page;
   }
@@ -167,6 +168,11 @@ window.google = { script: { get run() {
   await m.waitForSelector('.celebrate:has-text("PHASE CLEAR")');
   await m.waitForTimeout(600);
   await m.screenshot({ path: path.join(outDir, '9_celebrate.png') });
+
+  // ?tab=roleplay で開くとロープレのタブから始まる
+  const d = await open('t.oda@monochro-inc.com', 390, 'roleplay');
+  await d.waitForSelector('nav.tabs button.active:has-text("ロープレ")');
+  await d.waitForSelector('text=ロープレ試験');
 
   // メンバー表にいない人
   const s = await open('stranger@example.com', 390);
