@@ -74,9 +74,12 @@ assert.ok(arikata.every((t) => t.category && t.point.endsWith('状態')));
 const baibai = boot.tasks.filter((t) => t.mode === '応用：売買');
 assert.strictEqual(baibai.length, 32);
 assert.deepStrictEqual([...new Set(baibai.map((t) => t.category))], ['マンション', '戸建て', '売却・媒介', '契約・宅建業法', 'お金・ローン・税金']);
-assert.strictEqual(boot.tasks.length, 20 + 25 + 32);
+const chintai = boot.tasks.filter((t) => t.mode === '応用：賃貸');
+assert.strictEqual(chintai.length, 14);
+assert.ok(boot.tasks.indexOf(chintai[0]) < boot.tasks.indexOf(baibai[0]), '賃貸編が先');
+assert.strictEqual(boot.tasks.length, 20 + 25 + 46);
 // 何度開いても増えない
-assert.strictEqual(run('api_bootstrap()').tasks.length, 20 + 25 + 32);
+assert.strictEqual(run('api_bootstrap()').tasks.length, 20 + 25 + 46);
 assert.strictEqual(boot.materials.length, 3);
 
 // メンバー追加
@@ -191,7 +194,7 @@ assert.strictEqual(bulk.skipped.length, 1);
 
 // 進捗に数えるのは卒業要件とチェック扱いのタスクだけ（メモ・事務作業ワークの中身は数えない）
 let pr = run(`api_getProgress('小田天誠')`);
-assert.strictEqual(pr.rows.length, 11 + 12 + 25 + 32, 'goals + tasks with progress rows');
+assert.strictEqual(pr.rows.length, 11 + 12 + 25 + 46, 'goals + tasks with progress rows');
 assert.strictEqual(pr.rows.filter((r) => r.counts).length, 11 + 7);
 // メモのタスク：チェックすると実施日に今日が入り、日付は直せる。進捗率は変わらない
 as('t.oda@monochro-inc.com');
@@ -209,7 +212,7 @@ const hold = ss.insertSheet('タスクマスター（保留）');
 hold.appendRow(['ID', 'フェーズ', 'カテゴリ', 'タスク', 'ポイント']);
 hold.appendRow(['T150', '8. 1カ月間', 'コンサルティング', 'ブランドマップ信念', '']);
 const re = run('api_restructureFlow()');
-assert.strictEqual(re.total, 22 + 25 + 32, '20 + the held row + its guide row + あり方');
+assert.strictEqual(re.total, 22 + 25 + 46, '20 + the held row + its guide row + あり方');
 const t2 = run('api_bootstrap()').tasks;
 assert.strictEqual(t2.find((t) => t.id === 'T150').mode, 'メモ');
 assert.strictEqual(new Set(t2.map((t) => t.id)).size, t2.length, 'no duplicate ids');

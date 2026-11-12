@@ -99,6 +99,9 @@ window.google = { script: { url: { getLocation: (cb) => setTimeout(() => cb({ pa
   await p.waitForSelector('#adv-売買[open] .adv-cat[open] summary:has-text("1 / 8")');
   await p.waitForTimeout(200);
   while (await p.locator('.celebrate').count()) await p.click('.celebrate');
+  assert.deepStrictEqual(await p.locator('.adv-track > summary strong').allTextContents(), ['賃貸編', '売買編']);
+  await p.click('#adv-賃貸 > summary');
+  await p.click('#adv-賃貸 .adv-cat summary:has-text("資格")');
   await p.locator('.card.adv').screenshot({ path: path.join(outDir, '1c_advanced.png') });
   assert.strictEqual(await p.evaluate(() => progressPct()), pctBefore, '応用編は進捗率に入らない');
   // 卒業要件のバッジを押すと詳細が開き、達成にできる
