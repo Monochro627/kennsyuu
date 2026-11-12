@@ -70,9 +70,13 @@ assert.strictEqual(arikata.length, 20);
 assert.ok(/^実務スキル/.test(boot.goals[1].title));
 assert.strictEqual(boot.tasks.filter((t) => t.mode === boot.goals[1].id).length, 5);
 assert.ok(arikata.every((t) => t.category && t.point.endsWith('状態')));
-assert.strictEqual(boot.tasks.length, 20 + 25);
+// 応用編：売買（扱い「応用：売買」）。進捗率には入らない
+const baibai = boot.tasks.filter((t) => t.mode === '応用：売買');
+assert.strictEqual(baibai.length, 32);
+assert.deepStrictEqual([...new Set(baibai.map((t) => t.category))], ['マンション', '戸建て', '売却・媒介', '契約・宅建業法', 'お金・ローン・税金']);
+assert.strictEqual(boot.tasks.length, 20 + 25 + 32);
 // 何度開いても増えない
-assert.strictEqual(run('api_bootstrap()').tasks.length, 20 + 25);
+assert.strictEqual(run('api_bootstrap()').tasks.length, 20 + 25 + 32);
 assert.strictEqual(boot.materials.length, 3);
 
 // メンバー追加
@@ -187,7 +191,7 @@ assert.strictEqual(bulk.skipped.length, 1);
 
 // 進捗に数えるのは卒業要件とチェック扱いのタスクだけ（メモ・事務作業ワークの中身は数えない）
 let pr = run(`api_getProgress('小田天誠')`);
-assert.strictEqual(pr.rows.length, 11 + 12 + 25, 'goals + tasks with progress rows');
+assert.strictEqual(pr.rows.length, 11 + 12 + 25 + 32, 'goals + tasks with progress rows');
 assert.strictEqual(pr.rows.filter((r) => r.counts).length, 11 + 7);
 // メモのタスク：チェックすると実施日に今日が入り、日付は直せる。進捗率は変わらない
 as('t.oda@monochro-inc.com');
@@ -203,18 +207,18 @@ as('owner@monochro-inc.com');
 const ss = ctx.books[Object.keys(ctx.books).find((k) => ctx.books[k].name === '研修アプリデータ ※社外秘')];
 const hold = ss.insertSheet('タスクマスター（保留）');
 hold.appendRow(['ID', 'フェーズ', 'カテゴリ', 'タスク', 'ポイント']);
-hold.appendRow(['T050', '8. 1カ月間', 'コンサルティング', 'ブランドマップ信念', '']);
+hold.appendRow(['T150', '8. 1カ月間', 'コンサルティング', 'ブランドマップ信念', '']);
 const re = run('api_restructureFlow()');
-assert.strictEqual(re.total, 22 + 25, '20 + the held row + its guide row + あり方');
+assert.strictEqual(re.total, 22 + 25 + 32, '20 + the held row + its guide row + あり方');
 const t2 = run('api_bootstrap()').tasks;
-assert.strictEqual(t2.find((t) => t.id === 'T050').mode, 'メモ');
+assert.strictEqual(t2.find((t) => t.id === 'T150').mode, 'メモ');
 assert.strictEqual(new Set(t2.map((t) => t.id)).size, t2.length, 'no duplicate ids');
 assert.ok(t2.some((t) => t.id === 'M007'));
 // タスクを足すと、研修生の進捗シートにも自動で足される
-ss.getSheetByName('タスクマスター').appendRow(['T099', 'セットアップ研修', '', '新しいタスク', '', 'チェック']);
+ss.getSheetByName('タスクマスター').appendRow(['T199', 'セットアップ研修', '', '新しいタスク', '', 'チェック']);
 as('t.oda@monochro-inc.com');
-assert.ok(run(`api_getProgress('小田天誠')`).rows.some((r) => r.id === 'T099'));
-assert.strictEqual(run(`api_setCheck('小田天誠', 'T099', true)`).done, true);
+assert.ok(run(`api_getProgress('小田天誠')`).rows.some((r) => r.id === 'T199'));
+assert.strictEqual(run(`api_setCheck('小田天誠', 'T199', true)`).done, true);
 
 // 編集モード：研修生はできない、教育担当はできる
 as('t.oda@monochro-inc.com');
@@ -227,9 +231,9 @@ assert.strictEqual(tk.find((t) => t.id === 'T001').phase, 'セットアップ研
 assert.throws(() => run(`api_updateItem('task', 'T001', {title:'  '})`), /項目名/);
 // 追加（T002 の次に）。番号は保留中も含めて続きから
 const added = run(`api_addItem('task', {title:'名刺を受け取る', phase:'セットアップ研修', mode:'チェック'}, 'T002')`);
-assert.strictEqual(added.id, 'T100');
+assert.strictEqual(added.id, 'T200');
 tk = run('api_bootstrap()').tasks;
-assert.strictEqual(tk[tk.findIndex((t) => t.id === 'T002') + 1].id, 'T100');
+assert.strictEqual(tk[tk.findIndex((t) => t.id === 'T002') + 1].id, 'T200');
 // 並び替え
 const setupIds = tk.filter((t) => t.phase === 'セットアップ研修').map((t) => t.id);
 const reversed = setupIds.slice().reverse();
@@ -239,10 +243,10 @@ tk = run('api_bootstrap()').tasks;
 assert.deepStrictEqual(tk.filter((t) => t.phase === 'セットアップ研修').map((t) => t.id), reversed);
 assert.strictEqual(tk.length, full.length, 'nothing lost');
 // 削除は保留へ。進捗の数からも外れる
-run(`api_removeItem('task', 'T100')`);
-assert.ok(!run('api_bootstrap()').tasks.some((t) => t.id === 'T100'));
-assert.ok(ss.getSheetByName('タスクマスター（保留）').getDataRange().getValues().some((r) => r[0] === 'T100'));
-assert.strictEqual(run(`api_addItem('task', {title:'次のタスク', phase:'セットアップ研修'})`).id, 'T101', 'held ids not reused');
+run(`api_removeItem('task', 'T200')`);
+assert.ok(!run('api_bootstrap()').tasks.some((t) => t.id === 'T200'));
+assert.ok(ss.getSheetByName('タスクマスター（保留）').getDataRange().getValues().some((r) => r[0] === 'T200'));
+assert.strictEqual(run(`api_addItem('task', {title:'次のタスク', phase:'セットアップ研修'})`).id, 'T201', 'held ids not reused');
 // フェーズ名の変更
 assert.strictEqual(run(`api_renamePhase('依頼コンサル', 'コンサル（メモ）')`).count, 4);
 assert.ok(run('api_bootstrap()').tasks.some((t) => t.phase === 'コンサル（メモ）' && t.mode === 'メモ'));

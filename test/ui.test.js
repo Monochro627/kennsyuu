@@ -91,6 +91,16 @@ window.google = { script: { url: { getLocation: (cb) => setTimeout(() => cb({ pa
   await p.waitForSelector('#goal-G10 .subcat-head:has-text("1 / 4")');
   await p.locator('#goal-G10').screenshot({ path: path.join(outDir, '1b_arikata.png') });
   await p.click('#goal-G10 summary');
+  // 応用編：売買。カテゴリを開いてチェックしても進捗率は変わらない
+  const pctBefore = await p.evaluate(() => progressPct());
+  await p.click('#adv-売買 > summary');
+  await p.click('#adv-売買 .adv-cat summary:has-text("マンション")');
+  await p.click('#adv-売買 label.check:has-text("修繕積立金と管理費")');
+  await p.waitForSelector('#adv-売買[open] .adv-cat[open] summary:has-text("1 / 8")');
+  await p.waitForTimeout(200);
+  while (await p.locator('.celebrate').count()) await p.click('.celebrate');
+  await p.locator('.card.adv').screenshot({ path: path.join(outDir, '1c_advanced.png') });
+  assert.strictEqual(await p.evaluate(() => progressPct()), pctBefore, '応用編は進捗率に入らない');
   // 卒業要件のバッジを押すと詳細が開き、達成にできる
   // 質問の4大原則は現在地のすぐ下
   const order = await p.evaluate(() => [...document.querySelectorAll('main .card')].slice(0, 3).map((c) => c.textContent.slice(0, 20)));

@@ -136,6 +136,15 @@
   .goal-body { padding: 0 2px 14px 34px; }
   @media (max-width: 560px) { .goal-body { padding-left: 2px; } }
   .subcat { margin-top: 10px; }
+  .adv-track { border: 1px solid var(--line); border-radius: 14px; padding: 0 12px; margin-top: 10px; background: var(--card); }
+  .adv-track > summary { display: flex; align-items: center; gap: 10px; padding: 12px 0; cursor: pointer; list-style: none; }
+  .adv-track > summary::-webkit-details-marker { display: none; }
+  .adv-track > summary .mini { margin-left: auto; width: 54px; }
+  .adv-body { padding-bottom: 10px; }
+  .adv-cat { margin-top: 6px; }
+  .adv-cat > summary { display: flex; align-items: baseline; gap: 8px; padding: 8px 10px; border-left: 3px solid var(--ink); background: var(--paper); border-radius: 0 8px 8px 0; cursor: pointer; list-style: none; }
+  .adv-cat > summary::-webkit-details-marker { display: none; }
+  .adv-cat > summary .muted { margin-left: auto; }
   .subcat-head { display: flex; align-items: baseline; gap: 8px; padding: 6px 10px; border-left: 3px solid var(--ink); background: var(--paper); border-radius: 0 8px 8px 0; margin-bottom: 2px; }
   .subcat-head b { font-size: .9rem; }
   .subcat-head .muted { margin-left: auto; }
@@ -799,7 +808,50 @@ function viewHome() {
             return p.memo ? memoRow(t, st[t.id], editable, cat) : checkRow(t.id, t.title, t.point, cat, st[t.id], editable, null, PT.task);
           })))));
   });
+
+  // 応用編（主任以降。進捗率には入らない）
+  var adv = advancedCard(st, editable);
+  if (adv) append(wrap, adv);
   return wrap;
+}
+
+/** 応用編：「応用：〇〇」の扱いのタスクを、〇〇の枠ごとに、カテゴリで分けて並べる */
+function advancedTracks() {
+  var tracks = [];
+  S.data.tasks.forEach(function (t) {
+    if (String(t.mode).indexOf('応用：') !== 0) return;
+    var name = t.mode.slice(3);
+    var tr = tracks.filter(function (x) { return x.name === name; })[0];
+    if (!tr) tracks.push(tr = { name: name, tasks: [] });
+    tr.tasks.push(t);
+  });
+  return tracks;
+}
+function advancedCard(st, editable) {
+  var tracks = advancedTracks();
+  if (!tracks.length) return null;
+  S.openAdv = S.openAdv || {};
+  var keep = function (el, key) {
+    el.addEventListener('toggle', function () { S.openAdv[key] = el.open; });
+    return el;
+  };
+  var doneOf = function (list) { return list.filter(function (t) { return st[t.id] && st[t.id].done; }).length; };
+  return h('div', { class: 'card adv' },
+    h('div', { class: 'eyebrow', text: 'Advanced' }), h('h2', { class: 'title', text: '応用編（主任以降）' }),
+    h('p', { class: 'small muted', style: 'margin:0 0 10px', text: 'ルームアドバイザーになったあと、さらに伸ばしたい人の枠です。卒業要件ではないので、進捗率には入りません。' }),
+    tracks.map(function (tr) {
+      var d = doneOf(tr.tasks);
+      return keep(h('details', { class: 'adv-track', id: 'adv-' + tr.name, open: !!S.openAdv[tr.name] },
+        h('summary', null, h('strong', { text: tr.name + '編' }),
+          h('div', { class: 'mini' }, h('div', { class: 'small', style: 'text-align:right;font:700 .7rem Montserrat', text: d + '/' + tr.tasks.length }), h('div', { class: 'bar' }, h('i', { style: 'width:' + (d * 100 / tr.tasks.length) + '%' })))),
+        h('div', { class: 'adv-body' }, subGroups(tr.tasks).map(function (grp) {
+          var key = tr.name + '/' + grp.name;
+          var rows = grp.tasks.map(function (t) { return checkRow(t.id, t.title, t.point, null, st[t.id], editable, null, PT.task); });
+          return keep(h('details', { class: 'adv-cat', open: !!S.openAdv[key] },
+            h('summary', null, h('b', { text: grp.name || 'そのほか' }), h('span', { class: 'small muted', text: doneOf(grp.tasks) + ' / ' + grp.tasks.length })),
+            rows), key);
+        }))), tr.name);
+    }));
 }
 
 /** 卒業要件：上にバッジ（押すとそのリストを開く）、下に縦のリスト */
@@ -931,7 +983,7 @@ function taskGroups() {
       var goal = S.data.goals.filter(function (x) { return x.id === m; })[0];
       g = add('goal:' + m, (goal ? goal.title : m) + ' のやること', t.phase, m, '卒業要件を開いたときに出る項目');
     } else if (m.indexOf('目安：') === 0) g = add('guide:' + m, '入社からの目安：' + m.slice(3), t.phase, m, '目安の表の列（チェックなし）');
-    else g = add('mode:' + m, t.phase, t.phase, m, m === 'ロープレ一覧' ? 'ロープレのページの「ロープレの種類」' : '');
+    else g = add('mode:' + m, t.phase, t.phase, m, m === 'ロープレ一覧' ? 'ロープレのページの「ロープレの種類」' : m.indexOf('応用：') === 0 ? '応用編（主任以降・進捗率に入らない）' : '');
     g.tasks.push(t);
   });
   return groups;
@@ -948,14 +1000,16 @@ function viewEdit() {
   groups.forEach(function (g) { append(wrap, editList('task', g.label, g.note, g.tasks, g)); });
   // 新しいまとまり（研修フロー）を作る
   var newName = h('input', { id: 'new-phase', placeholder: '新しいまとまりの名前（例：入社1週目）' });
-  var newMode = h('select', { id: 'new-phase-mode' }, [h('option', { value: 'チェック', text: 'チェック（進捗率に入る）' }), h('option', { value: 'メモ', text: 'メモ（実施日つき）' })]);
+  var newMode = h('select', { id: 'new-phase-mode' }, [h('option', { value: 'チェック', text: 'チェック（進捗率に入る）' }), h('option', { value: 'メモ', text: 'メモ（実施日つき）' }), h('option', { value: '応用', text: '応用編（主任以降・進捗率に入らない）' })]);
   var newTitle = h('input', { id: 'new-phase-first', placeholder: '最初の項目' });
   append(wrap, h('div', { class: 'card' }, h('div', { class: 'eyebrow', text: 'New Group' }), h('h2', { class: 'title', text: '研修フローにまとまりを足す' }),
     h('div', { class: 'grid2' }, h('label', { class: 'field' }, 'まとまりの名前', newName), h('label', { class: 'field' }, '種類', newMode)),
     h('label', { class: 'field' }, '最初の項目', newTitle),
     h('button', { class: 'btn ghost', text: '＋ まとまりを作る', onclick: function () {
       if (!newName.value.trim() || !newTitle.value.trim()) { toast('名前と最初の項目を入れてください', true); return; }
-      call('api_addItem', 'task', { phase: newName.value, title: newTitle.value, mode: newMode.value }, null).then(afterEdit('まとまりを作りました')).catch(function (e) { toast(errMsg(e), true); });
+      var adv = newMode.value === '応用';
+      var nm = newName.value.trim().replace(/^応用編：/, '').replace(/編$/, '');
+      call('api_addItem', 'task', { phase: adv ? '応用編：' + nm : newName.value, title: newTitle.value, mode: adv ? '応用：' + nm : newMode.value }, null).then(afterEdit('まとまりを作りました')).catch(function (e) { toast(errMsg(e), true); });
     } })));
   return wrap;
 }
@@ -983,7 +1037,7 @@ function editList(kind, title, note, items, group) {
   // 追加フォーム
   var aTitle = h('input', { placeholder: kind === 'goal' ? '卒業要件の名前' : '項目の名前' });
   var aSub = h('input', { placeholder: kind === 'goal' ? '説明（任意）' : 'ポイント・補足（任意）' });
-  var inGoal = !!(group && /^G\d+$/.test(group.mode));
+  var inGoal = !!(group && /^(G\d+$|応用：)/.test(group.mode));
   var aCat = inGoal ? h('input', { placeholder: 'カテゴリ（例：時間・約束）', value: items.length ? items[items.length - 1].category || '' : '' }) : null;
   var addBox = h('details', { class: 'eadd' }, h('summary', { text: '＋ 項目を追加' }),
     h('div', { class: 'grid2', style: 'margin-top:8px' }, aTitle, aSub),
@@ -1000,7 +1054,7 @@ function editRow(kind, it, group, list) {
   var sub = kind === 'goal' ? it.detail : it.point;
   var row = h('div', { class: 'erow', 'data-id': it.id },
     h('span', { class: 'handle', title: '押したまま動かす', 'aria-label': '並び替え', text: '⋮⋮' }),
-    h('div', { class: 't' }, kind === 'task' && it.category && /^G\d+$/.test(it.mode) ? h('span', { class: 'ecat', text: it.category }) : null,
+    h('div', { class: 't' }, kind === 'task' && it.category && /^(G\d+$|応用：)/.test(it.mode) ? h('span', { class: 'ecat', text: it.category }) : null,
       h('div', { class: 'main', text: it.title }), sub ? h('div', { class: 'small muted', text: sub }) : null),
     h('div', { class: 'eacts' },
       h('button', { type: 'button', title: '上へ', text: '↑', onclick: function () { move(row, -1); } }),

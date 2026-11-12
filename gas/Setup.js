@@ -84,6 +84,8 @@ function setup() {
   p.setProperty('ARIKATA_ADDED', '');
   p.setProperty('SKILL_ADDED', '');
   ensureSeedGoals_();
+  p.setProperty('BAIBAI_ADDED', '');
+  ensureAdvanced_();
   writeMaterials_(ss, importSite_(manuals.getId()));
   Logger.log('初期設定が完了しました。データ: ' + ss.getUrl());
 }
