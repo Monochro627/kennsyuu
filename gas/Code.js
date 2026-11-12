@@ -285,6 +285,7 @@ function summaries_(members) {
 function api_bootstrap() {
   var me = currentUser_();
   ensureExamSheets_();
+  ensureMonochroExam_();
   ensureSeedGoals_();
   ensureAdvanced_();
   var members = members_();
@@ -301,9 +302,12 @@ function api_bootstrap() {
     };
   }).sort(function (a, b) { return a.order - b.order; });
   var sessions = examSessions_();
+  var allExams = exams_();
   return {
     me: me,
-    exams: exams_(),
+    // ロープレ試験（【試験①】〜）と、昇格のための Monochro試験は分けて渡す
+    exams: allExams.filter(function (e) { return !isMonochroExam_(e.id); }),
+    promoExams: allExams.filter(function (e) { return isMonochroExam_(e.id); }),
     pendingExams: sessions.filter(function (x) {
       return x.status !== '完了' && x.evaluators.indexOf(me.name) >= 0 &&
         !x.evaluations.some(function (e) { return e.evaluator === me.name; });

@@ -29,7 +29,8 @@ const materials = [
   ['VID-002', 'eラーニング', '⑦契約手続き編', '審査について', '動画', 'https://youtu.be/kcxlu_qepkk', '任意', 'ライフライン変更', '', 2],
   ['MAN-01', 'マニュアル', 'マニュアル', '社内ルールについて', 'ドキュメント', 'https://docs.google.com/document/d/X/edit', '', '', '', 1000],
 ];
-const ctx = createContext({ userEmail: 'owner@monochro-inc.com', sourceFlowRows: flowRows, siteImportRows: materials, examSheets });
+const ctx = createContext({ userEmail: 'owner@monochro-inc.com', sourceFlowRows: flowRows, siteImportRows: materials, examSheets,
+  promoRows: [['伊藤竣哉', '役職', '主任', '', '2025/04', '小嶋勇輝', '2025/04/01 10:00'], ['伊藤竣哉', 'クリア', 'コンサルティングルームアドバイザー', 'FP3級の合格', 'TRUE', '小嶋勇輝', '2025/06/01 10:00']] });
 const run = (code) => { const v = require('vm').runInContext(code, ctx); return v === undefined ? v : JSON.parse(JSON.stringify(v)); };
 const as = (email) => { ctx.state.userEmail = email; };
 
@@ -270,6 +271,34 @@ assert.strictEqual(run('api_bootstrap()').goals.length, 11);
 const ari = run('api_bootstrap()').tasks.find((t) => t.mode === 'G10');
 run(`api_removeItem('task', '${ari.id}')`);
 assert.ok(!run('api_bootstrap()').tasks.some((t) => t.id === ari.id));
+
+// 昇格：成績ダッシュボードの昇格チェック（役職・クリア）を読み、段階と要件を出す
+as('ito@monochro-inc.com');
+let promo = run('api_promotion()');
+assert.strictEqual(promo.steps.length, 6);
+assert.strictEqual(promo.state.roles['伊藤竣哉'].step, 0);
+assert.ok(promo.state.checks['伊藤竣哉']['コンサルティングルームアドバイザー']['FP3級の合格']);
+assert.deepStrictEqual(promo.examSteps.map((x) => x.short), ['課長代理', '課長', '次長', 'トップ']);
+// Monochro試験はロープレ試験と別に渡す（卒業要件のロープレ試験の数には入らない）
+boot = run('api_bootstrap()');
+assert.ok(!boot.exams.some((e) => e.id === 'MX01'));
+assert.strictEqual(boot.promoExams[0].id, 'MX01');
+assert.strictEqual(boot.promoExams[0].max, 90);
+// 段階を選ばないと実施できない。合格すると成績ダッシュボードの昇格要件にクリアが付く
+assert.throws(() => run(`api_createExamSession({examId:'MX01', trainee:'伊藤竣哉', evaluators:['小嶋勇輝']})`), /段階/);
+as('owner@monochro-inc.com');
+const mx = run(`api_createExamSession({examId:'MX01', trainee:'伊藤竣哉', evaluators:['小嶋勇輝'], settingNo:'コンサルティングルームアドバイザー'})`);
+const mxScores = {}; boot.promoExams[0].items.forEach((it) => { if (it.max) mxScores[it.no] = it.max; });
+const mxRes = run(`api_submitExamEvaluation('${mx.id}', {scores: ${JSON.stringify(mxScores)}, comments: {9: '理念の質問に即答'}, pass: true})`);
+assert.strictEqual(mxRes.result, '合格');
+assert.strictEqual(mxRes.reflected, 'コンサルティングルームアドバイザー');
+promo = run('api_promotion()');
+assert.ok(promo.state.checks['伊藤竣哉']['コンサルティングルームアドバイザー']['Monochro試験']);
+assert.strictEqual(promo.sessions[0].result, '合格');
+// 評価シートを取り込み直しても Monochro試験は消えない
+run('reimportExams()');
+assert.ok(run('api_bootstrap()').promoExams.some((e) => e.id === 'MX01'));
+assert.ok(run('api_bootstrap()').exams.length > 0);
 
 // メンバー表にいない人は使えない
 as('stranger@example.com');

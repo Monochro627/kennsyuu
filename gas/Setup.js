@@ -82,6 +82,8 @@ function setup() {
 
   ensureExamSheets_();
   p.setProperty('ARIKATA_ADDED', '');
+  p.setProperty('MONOCHRO_EXAM_ADDED', '');
+  ensureMonochroExam_();
   p.setProperty('SKILL_ADDED', '');
   ensureSeedGoals_();
   p.setProperty('CHINTAI_ADDED', '');

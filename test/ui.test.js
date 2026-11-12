@@ -32,7 +32,9 @@ const flowRows = [
   ['1～3ヵ月目最終日\n→研修生から\nルームアドバイザーへ', '卒業検定', '■原状回復の知識試験', false],
   ['', '卒業検定', '■新人評価（人物評価シート）', false],
 ];
-const ctx = createContext({ userEmail: 'owner@monochro-inc.com', sourceFlowRows: flowRows, siteImportRows: materials, docExportHtml, examSheets });
+const ctx = createContext({ userEmail: 'owner@monochro-inc.com', sourceFlowRows: flowRows, siteImportRows: materials, docExportHtml, examSheets,
+  promoRows: [['伊藤竣哉', '役職', '主任', '', '2025/04', '小嶋勇輝', '2025/04/01 10:00'], ['伊藤竣哉', 'クリア', '主任', '人物評価', 'TRUE', '小嶋勇輝', '2025/03/01 10:00'],
+    ['伊藤竣哉', 'クリア', 'コンサルティングルームアドバイザー', 'FP3級の合格', 'TRUE', '小嶋勇輝', '2025/06/01 10:00']] });
 const run = (code) => vm.runInContext(code, ctx);
 run('setup()');
 run(`api_addMember({name:'小田天誠', email:'t.oda@monochro-inc.com', role:'研修生', joined:'2026/10/01'})`);
@@ -297,6 +299,36 @@ window.google = { script: { url: { getLocation: (cb) => setTimeout(() => cb({ pa
   const d = await open('t.oda@monochro-inc.com', 390, 'roleplay');
   await d.waitForSelector('nav.tabs button.active:has-text("ロープレ")');
   await d.waitForSelector('text=ロープレ試験');
+
+  // 昇格：今の役職（主任）と次の段階が開き、Monochro試験を実施すると記録に出る。評価者が合格にすると要件がクリアになる
+  const pr = await open('ito@monochro-inc.com', 390, 'promo');
+  await pr.waitForSelector('.promo-now:has-text("主任")');
+  await pr.waitForSelector('#promo-2[open] .preq.done:has-text("FP3級の合格")');
+  await pr.waitForSelector('#promo-1[open]');
+  assert.strictEqual(await pr.locator('#promo-3[open]').count(), 0);
+  await pr.screenshot({ path: path.join(outDir, '11_promo.png'), fullPage: true });
+  await pr.click('#promo-2 .preq:has-text("Monochro試験") button');
+  await pr.waitForSelector('.modal:has-text("Monochro試験を実施")');
+  assert.strictEqual(await pr.locator('.modal select').nth(1).inputValue(), 'コンサルティングルームアドバイザー');
+  await pr.locator('.modal .chk-list label:has-text("小嶋勇輝") input').check();
+  await pr.click('.modal button:has-text("実施する")');
+  await pr.waitForSelector('#promo-exams .ses:has-text("段階 課長代理")');
+  const ow = await open('owner@monochro-inc.com', 390, 'promo');
+  await ow.selectOption('#promo-who', '伊藤竣哉');
+  await ow.click('#promo-exams .ses:has-text("伊藤竣哉") button:has-text("評価する")');
+  await ow.waitForSelector('.reader .pill:has-text("受験者 伊藤竣哉")');
+  await ow.waitForSelector('.reader .pill:has-text("段階 課長代理")');
+  await ow.waitForSelector('.reader .exam-item .scores button');
+  for (const row of await ow.locator('.reader .exam-item').all()) {
+    const btns = row.locator('.scores button');
+    if (await btns.count()) await btns.last().click();
+  }
+  await ow.locator('.reader .pf button', { hasText: /^合格$/ }).click();
+  await ow.click('.reader button:has-text("提出")');
+  await ow.waitForSelector('.celebrate:has-text("Monochro試験")');
+  await ow.click('.celebrate');
+  await ow.waitForSelector('#promo-2 .preq.done:has-text("Monochro試験")');
+  await ow.locator('#promo-2').screenshot({ path: path.join(outDir, '11b_promo_step.png') });
 
   // メンバー表にいない人
   const s = await open('stranger@example.com', 390);

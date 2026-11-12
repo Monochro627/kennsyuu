@@ -76,6 +76,13 @@ function importExams_(ss) {
   });
   var exSh = ss.getSheetByName(EXAM_SHEET.EXAMS);
   var itSh = ss.getSheetByName(EXAM_SHEET.ITEMS);
+  // 元シートから来ていない試験（Monochro試験など）はそのまま残す
+  var keep = function (sh) {
+    if (sh.getLastRow() < 2) return [];
+    return sh.getRange(2, 1, sh.getLastRow() - 1, 4).getValues().filter(function (r) { return r[0] !== '' && !/^EX\d+$/.test(String(r[0])); });
+  };
+  examRows = examRows.concat(keep(exSh));
+  itemRows = itemRows.concat(keep(itSh));
   if (exSh.getLastRow() > 1) exSh.getRange(2, 1, exSh.getLastRow() - 1, 4).clearContent();
   if (itSh.getLastRow() > 1) itSh.getRange(2, 1, itSh.getLastRow() - 1, 4).clearContent();
   if (examRows.length) exSh.getRange(2, 1, examRows.length, 4).setValues(examRows);
@@ -198,7 +205,10 @@ function api_createExamSession(req) {
   if (!exam) throw new Error('試験を選んでください。');
   var members = members_();
   var trainee = members.filter(function (m) { return m.name === req.trainee; })[0];
-  if (!trainee) throw new Error('実践者を選んでください。');
+  if (!trainee) throw new Error(isMonochroExam_(exam.id) ? '受験者を選んでください。' : '実践者を選んでください。');
+  if (isMonochroExam_(exam.id) && !monochroExamSteps_().some(function (s) { return s.title === req.settingNo; })) {
+    throw new Error('受ける段階を選んでください。');
+  }
   var evaluators = (req.evaluators || []).filter(function (n, i, a) { return a.indexOf(n) === i && n !== trainee.name; });
   if (!evaluators.length) throw new Error('評価者を1人以上選んでください。');
   evaluators.forEach(function (n) {
@@ -206,8 +216,10 @@ function api_createExamSession(req) {
   });
   return withLock_(function () {
     var now = new Date();
-    var id = 'EXS-' + Utilities.formatDate(now, 'Asia/Tokyo', 'yyyyMMddHHmmss');
-    sheet_(EXAM_SHEET.SESSIONS).appendRow([id, now, exam.id, exam.name, trainee.name, evaluators.join(','),
+    var sh = sheet_(EXAM_SHEET.SESSIONS);
+    // 同じ秒に2つ実施しても重ならないよう、行番号を付ける
+    var id = 'EXS-' + Utilities.formatDate(now, 'Asia/Tokyo', 'yyyyMMddHHmmss') + '-' + (sh.getLastRow() + 1);
+    sh.appendRow([id, now, exam.id, exam.name, trainee.name, evaluators.join(','),
       String(req.settingNo || ''), me.name, '評価中', '', '', exam.max]);
     return { id: id, at: fmtDate_(now) };
   });
@@ -260,6 +272,8 @@ function api_submitExamEvaluation(sessionId, ev) {
       sheet_(SHEET.ROLEPLAY).appendRow(['RP-' + s.id, s.day, '', s.trainee, s.evaluators.join('、'), s.examName,
         '判定：' + result + '（平均 ' + avg + ' / ' + exam.max + '点）', fb, '', '', '', '試験', new Date()]);
     }
-    return { id: s.id, result: result, submitted: done.length, total: total };
+    // Monochro試験に合格したら、成績ダッシュボードの昇格要件にもクリアを付ける
+    var reflected = result === EXAM_PASS && isMonochroExam_(s.examId) ? reflectMonochroPass_(s, me.name) : '';
+    return { id: s.id, result: result, submitted: done.length, total: total, reflected: reflected };
   });
 }

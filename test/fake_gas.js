@@ -27,6 +27,8 @@ class FakeRange {
     for (let i = 0; i < this.rows; i++) if (this.sheet.get(this.row + i, this.col) === '') this.sheet.set(this.row + i, this.col, false);
     return this;
   }
+  getDisplayValues() { return this.getValues().map((r) => r.map((x) => (x === null || x === undefined ? '' : String(x)))); }
+  setNumberFormat() { return this; }
   setFontWeight() { return this; }
   setBackground() { return this; }
   setDataValidation() { return this; }
@@ -71,7 +73,7 @@ class FakeSpreadsheet {
   setSpreadsheetTimeZone() {}
 }
 
-function createContext({ userEmail, sourceFlowRows, siteImportRows, docExportHtml, examSheets }) {
+function createContext({ userEmail, sourceFlowRows, siteImportRows, docExportHtml, examSheets, promoRows }) {
   const store = {};
   const books = {};
   let seq = 0;
@@ -86,6 +88,15 @@ function createContext({ userEmail, sourceFlowRows, siteImportRows, docExportHtm
   Object.entries(examSheets || {}).forEach(([name, rows]) => { const sh = examBook.insertSheet(name); rows.forEach((r) => sh.appendRow(r)); });
   examBook.insertSheet('アウトトーク集').appendRow(['関係ないシート']);
   books['1R4jsSl-KLH2oclLekjZtfiHJJSjjv93JrfCAFyvb8tc'] = examBook;
+  // 顧客管理のスプレッド（成績ダッシュボードの「昇格チェック」シートだけ使う）
+  if (promoRows) {
+    const crm = new FakeSpreadsheet('CRM', 'crm');
+    crm.sheets = [];
+    const ps = crm.insertSheet('昇格チェック');
+    ps.appendRow(['担当者', '種類', '段階', '項目', '値', '更新者', '更新日時']);
+    promoRows.forEach((r) => ps.appendRow(r));
+    books['1-F5ckS4tNKnHXTrE4jUB2Tcz804lx2vdMQkJvNANvRo'] = crm;
+  }
   const folder = (id) => ({
     getId: () => id,
     createFolder: () => folder('F' + ++seq),
@@ -133,7 +144,7 @@ function createContext({ userEmail, sourceFlowRows, siteImportRows, docExportHtm
     UrlFetchApp: { fetch: () => ({ getResponseCode: () => 200, getContentText: () => docExportHtml || '<html><body><p>本文</p></body></html>' }) },
   };
   vm.createContext(ctx);
-  for (const f of ['SiteImport.js', 'Manual.js', 'Exam.js', 'Flow.js', 'Editor.js', 'Arikata.js', 'Advanced.js', 'Code.js', 'Setup.js']) {
+  for (const f of ['SiteImport.js', 'Manual.js', 'Exam.js', 'Flow.js', 'Editor.js', 'Arikata.js', 'Advanced.js', 'Promotion.js', 'Code.js', 'Setup.js']) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '../gas', f), 'utf8'), ctx, { filename: f });
   }
   // サイトの取り込みはテスト用の行に差し替える
