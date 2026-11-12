@@ -818,9 +818,6 @@ function viewHome() {
   // 卒業要件：上にバッジ、下に縦のリスト（押すと詳細と項目が開く）
   append(wrap, goalsCard(snap, st, editable));
 
-  // 同席（5件）・書類チェック（10件）。1件ごとに上司のフィードバック
-  if (S.progress.cases) append(wrap, caseCard(S.progress.cases, editable));
-
   // 入社からの目安（横向きの表）
   var guide = guideTable();
   if (guide) append(wrap, guide);
@@ -845,6 +842,9 @@ function viewHome() {
           })))));
   });
 
+  // 卒業後のファースト義務：同席（5件）・書類チェック（10件）。1件ごとに上司のフィードバック
+  if (S.progress.cases) append(wrap, caseCard(S.progress.cases, editable));
+
   // 応用編（主任以降。進捗率には入らない）
   var adv = advancedCard(st, editable);
   if (adv) append(wrap, adv);
@@ -862,9 +862,9 @@ function caseCard(cs, editable) {
   };
   var waiting = cs.records.filter(function (c) { return !c.feedback; }).length;
   var card = h('div', { class: 'card', id: 'case-card' }, h('div', { class: 'row' },
-    h('div', null, h('div', { class: 'eyebrow', text: 'First Deals' }), h('h2', { class: 'title', style: 'margin:4px 0 0', text: '同席・書類チェック' })),
+    h('div', null, h('div', { class: 'eyebrow', text: 'After Graduation' }), h('h2', { class: 'title', style: 'margin:4px 0 0', text: '卒業後のファースト義務' })),
     h('div', { class: 'spacer' }), editable ? h('button', { class: 'btn', id: 'case-add', text: '＋ 記録する', onclick: function () { openCaseForm(null); } }) : null),
-    h('p', { class: 'small muted', style: 'margin:6px 0 12px', text: '最初の' + cs.required.attend + '件は上司が同席、' + cs.required.docs + '件までは上司が書類をチェックします。1件ごとに上司から感想・フィードバックをもらいましょう。' }),
+    h('p', { class: 'small muted', style: 'margin:6px 0 12px', text: 'ルームアドバイザーになったら、最初の' + cs.required.attend + '件は上司が同席、' + cs.required.docs + '件までは上司が書類をチェックします（同席・書類チェック）。1件ごとに上司から感想・フィードバックをもらいましょう。' }),
     h('div', { class: 'case-meters' }, meter('上司の同席', cs.attend, cs.required.attend, 'Attend'), meter('書類チェック', cs.docs, cs.required.docs, 'Documents')));
   if (waiting && isStaff()) append(card, h('p', { class: 'small', style: 'margin:12px 0 0;font-weight:700', text: 'フィードバック待ち ' + waiting + '件' }));
   var list = h('div', { class: 'case-list' });
