@@ -1463,11 +1463,13 @@ function viewRoleplay() {
         return h('button', { type: 'button', class: 'rp-kind', onclick: function () {
           S.rpTopic = t.title.replace(/^[■①-⑳\d]+\s*/, '');
           var det = document.getElementById('rp-form');
+          S.rpOpen = true;
           if (det) { det.open = true; var inp = document.getElementById('rp-topic'); if (inp) { inp.value = S.rpTopic; inp.focus(); } det.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
         } }, h('b', { text: t.title }), t.point ? h('span', { class: 'small muted', text: t.point }) : null);
       }))));
   }
-  append(wrap, h('details', { class: 'card', id: 'rp-form' },
+  // 一覧の読み込みなどで描き直しても、開いた記録フォームを閉じない
+  var rpForm = h('details', { class: 'card', id: 'rp-form', open: !!S.rpOpen },
     h('summary', { style: 'cursor:pointer;list-style:none' }, h('strong', { text: '＋ ロープレを記録する' })),
     h('div', { style: 'margin-top:14px' },
       h('div', { class: 'grid2' }, h('label', { class: 'field' }, '日付', f.date), h('label', { class: 'field' }, '所要時間（分）', f.minutes),
@@ -1478,7 +1480,9 @@ function viewRoleplay() {
       h('label', { class: 'field' }, 'フィードバック', f.feedback),
       h('label', { class: 'field' }, '録音・録画（任意・40MBまで）', f.file,
         h('div', { class: 'small muted', text: 'スマホのボイスメモやMeetの録画ファイルを選べます。文字起こしとAIフィードバックは第2弾で追加予定です。' })),
-      h('div', { class: 'row' }, btn, status))));
+      h('div', { class: 'row' }, btn, status)));
+  rpForm.addEventListener('toggle', function () { S.rpOpen = rpForm.open; });
+  append(wrap, rpForm);
 
   var filter = h('select', { onchange: function () { S.rpFilter = this.value; render(); } },
     [h('option', { value: '', text: '全員' })].concat(people.map(function (n) { var o = h('option', { value: n, text: n }); if (n === S.rpFilter) o.selected = true; return o; })));
