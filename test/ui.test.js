@@ -286,6 +286,27 @@ window.google = { script: { url: { getLocation: (cb) => setTimeout(() => cb({ pa
   await a.waitForSelector('text=ルームアドバイザー卒業要件');
   await a.waitForSelector('label.check:has-text("セットアップ研修（初日）")');
 
+  // 同席・書類チェック：研修生が記録し（フィードバック欄は触れない）、上司がフィードバックを入れる
+  const cp = await open('t.oda@monochro-inc.com', 390);
+  await cp.click('#case-add');
+  assert.ok(await cp.locator('#case-feedback').isDisabled());
+  await cp.fill('#case-title', 'A様 ○○マンション 申込');
+  await cp.selectOption('.modal select', '伊藤竣哉');
+  await cp.fill('#case-reflection', '初期費用の説明で詰まった');
+  await cp.click('#case-save');
+  await cp.waitForSelector('#case-card .case-row:has-text("A様") .pill:has-text("FB待ち")');
+  await cp.waitForSelector('#case-card .case-meter:has-text("上司の同席") .case-n:has-text("1")');
+  const cb = await open('ito@monochro-inc.com', 390);
+  await cb.waitForSelector('text=ルームアドバイザー卒業要件');
+  await cb.selectOption('main select >> nth=0', '小田天誠');
+  await cb.waitForSelector('#case-card .case-row:has-text("A様")');
+  await cb.waitForSelector('#case-card :text("フィードバック待ち 1件")');
+  await cb.click('#case-card .case-row:has-text("A様")');
+  await cb.fill('#case-feedback', 'ヒアリングは良かった。費用は表を見せながら説明しよう');
+  await cb.click('#case-save');
+  await cb.waitForSelector('#case-card .case-fb:has-text("表を見せながら")');
+  await cb.locator('#case-card').screenshot({ path: path.join(outDir, '12_case_check.png') });
+
   // 宮川さんが入社前フェーズを全部終えると PHASE CLEAR の演出
   const m = await open('miyagawa@monochro-inc.com', 390);
   await m.waitForSelector('text=黒から、白へ。');

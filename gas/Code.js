@@ -328,7 +328,8 @@ function api_getProgress(traineeName) {
   syncProgressSheet_(traineeName);
   var rows = readProgress_(traineeName);
   var act = activityOf_(activityIndex_(), trainee);
-  return { name: traineeName, rows: rows, watched: Object.keys(act.e.ids), examsPassed: act.exams, stats: stats_(rows, act) };
+  return { name: traineeName, rows: rows, watched: Object.keys(act.e.ids), examsPassed: act.exams, stats: stats_(rows, act),
+    cases: caseSummary_(traineeName) };
 }
 
 /** チェックの付け外し。研修生は自分の分だけ、教育担当・管理者は全員分を操作できる */

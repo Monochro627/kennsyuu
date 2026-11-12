@@ -272,6 +272,32 @@ const ari = run('api_bootstrap()').tasks.find((t) => t.mode === 'G10');
 run(`api_removeItem('task', '${ari.id}')`);
 assert.ok(!run('api_bootstrap()').tasks.some((t) => t.id === ari.id));
 
+// 同席・書類チェック：研修生は自分の分を記録できるがフィードバックは入れられない。上司はフィードバックを入れられる
+as('t.oda@monochro-inc.com');
+let cs = run(`api_getProgress('小田天誠')`).cases;
+assert.deepStrictEqual([cs.attend, cs.docs, cs.required.attend, cs.required.docs], [0, 0, 5, 10]);
+assert.throws(() => run(`api_addCaseCheck({trainee:'小田天誠', title:'A様 ○○マンション'})`), /同席.*書類チェック/);
+cs = run(`api_addCaseCheck({trainee:'小田天誠', date:'2026-11-5', title:'A様 ○○マンション', attend:true, docs:true, boss:'伊藤竣哉', feedback:'勝手に書く', reflection:'初期費用の説明で詰まった'})`);
+assert.strictEqual(cs.records[0].feedback, '', 'trainee cannot write feedback');
+assert.strictEqual(cs.records[0].date, '2026/11/05');
+assert.deepStrictEqual([cs.attend, cs.docs], [1, 1]);
+const cid = cs.records[0].id;
+assert.throws(() => run(`api_updateCaseCheck('${cid}', {feedback:'x'})`), /上司/);
+assert.throws(() => run(`api_addCaseCheck({trainee:'宮川大輝', title:'x', docs:true})`), /他の研修生|研修生を選んで/);
+as('ito@monochro-inc.com');
+cs = run(`api_updateCaseCheck('${cid}', {feedback:'ヒアリングは良かった。費用の説明は表を使って'})`);
+assert.strictEqual(cs.records[0].feedbackBy, '伊藤竣哉');
+assert.strictEqual(cs.records[0].reflection, '初期費用の説明で詰まった');
+cs = run(`api_addCaseCheck({trainee:'小田天誠', date:'2026/11/12', title:'B様 書類のみ', docs:true, feedback:'重説の記載漏れ1か所'})`);
+assert.deepStrictEqual([cs.attend, cs.docs], [1, 2]);
+assert.strictEqual(cs.records[0].title, 'B様 書類のみ', 'newest first');
+assert.strictEqual(cs.records[0].boss, '伊藤竣哉', 'boss defaults to me');
+as('t.oda@monochro-inc.com');
+assert.throws(() => run(`api_removeCaseCheck('${cid}')`), /管理者・教育担当/);
+as('ito@monochro-inc.com');
+cs = run(`api_removeCaseCheck('${cid}')`);
+assert.deepStrictEqual([cs.attend, cs.docs, cs.records.length], [0, 1, 1]);
+
 // 昇格：成績ダッシュボードの昇格チェック（役職・クリア）を読み、段階と要件を出す
 as('ito@monochro-inc.com');
 let promo = run('api_promotion()');

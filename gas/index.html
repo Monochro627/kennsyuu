@@ -139,6 +139,15 @@
   .goal-body { padding: 0 2px 14px 34px; }
   @media (max-width: 560px) { .goal-body { padding-left: 2px; } }
   .subcat { margin-top: 10px; }
+  .case-meters { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .case-meter { border: 1px solid var(--line); border-radius: 14px; padding: 12px; }
+  .case-meter.ok { border-color: var(--ink); }
+  .case-n b { font: 800 1.8rem var(--en); }
+  .case-n span { font: 600 .85rem var(--en); color: var(--mute); }
+  .case-list { margin-top: 10px; }
+  .case-row { padding: 12px 0; border-top: 1px solid var(--line); cursor: pointer; display: grid; gap: 4px; }
+  .case-fb { background: var(--paper); border-radius: 10px; padding: 8px 10px; }
+  .case-fb p { margin: 2px 0 0; white-space: pre-wrap; }
   .promo-now { font: 800 1.15rem/1.4 var(--jp); margin-top: 2px; }
   .promo-tree { display: grid; gap: 10px; }
   .promo-branch { display: grid; gap: 14px; grid-template-columns: 1fr 1fr; padding-left: 14px; border-left: 2px dashed var(--line); }
@@ -809,6 +818,9 @@ function viewHome() {
   // 卒業要件：上にバッジ、下に縦のリスト（押すと詳細と項目が開く）
   append(wrap, goalsCard(snap, st, editable));
 
+  // 同席（5件）・書類チェック（10件）。1件ごとに上司のフィードバック
+  if (S.progress.cases) append(wrap, caseCard(S.progress.cases, editable));
+
   // 入社からの目安（横向きの表）
   var guide = guideTable();
   if (guide) append(wrap, guide);
@@ -837,6 +849,86 @@ function viewHome() {
   var adv = advancedCard(st, editable);
   if (adv) append(wrap, adv);
   return wrap;
+}
+
+/** 同席・書類チェック：最初の5件は上司が同席、10件までは書類をチェック。1件ごとにフィードバック */
+function caseCard(cs, editable) {
+  var meter = function (label, n, need, en) {
+    var ok = n >= need;
+    return h('div', { class: 'case-meter' + (ok ? ' ok' : '') }, h('div', { class: 'row' }, h('span', { class: 'eyebrow', text: en }), h('div', { class: 'spacer' }),
+      ok ? h('span', { class: 'pill solid', text: 'CLEAR' }) : null),
+      h('div', { class: 'case-n' }, h('b', { text: Math.min(n, need) }), h('span', { text: ' / ' + need + '件' })), h('div', { class: 'small', text: label }),
+      h('div', { class: 'bar', style: 'margin-top:6px' }, h('i', { style: 'width:' + Math.min(100, n * 100 / need) + '%' })));
+  };
+  var waiting = cs.records.filter(function (c) { return !c.feedback; }).length;
+  var card = h('div', { class: 'card', id: 'case-card' }, h('div', { class: 'row' },
+    h('div', null, h('div', { class: 'eyebrow', text: 'First Deals' }), h('h2', { class: 'title', style: 'margin:4px 0 0', text: '同席・書類チェック' })),
+    h('div', { class: 'spacer' }), editable ? h('button', { class: 'btn', id: 'case-add', text: '＋ 記録する', onclick: function () { openCaseForm(null); } }) : null),
+    h('p', { class: 'small muted', style: 'margin:6px 0 12px', text: '最初の' + cs.required.attend + '件は上司が同席、' + cs.required.docs + '件までは上司が書類をチェックします。1件ごとに上司から感想・フィードバックをもらいましょう。' }),
+    h('div', { class: 'case-meters' }, meter('上司の同席', cs.attend, cs.required.attend, 'Attend'), meter('書類チェック', cs.docs, cs.required.docs, 'Documents')));
+  if (waiting && isStaff()) append(card, h('p', { class: 'small', style: 'margin:12px 0 0;font-weight:700', text: 'フィードバック待ち ' + waiting + '件' }));
+  var list = h('div', { class: 'case-list' });
+  cs.records.forEach(function (c) {
+    append(list, h('div', { class: 'case-row', onclick: function () { openCaseForm(c); } },
+      h('div', { class: 'row' }, h('span', { class: 'small muted', text: c.date }),
+        c.attend ? h('span', { class: 'pill jp', text: '同席' }) : null, c.docs ? h('span', { class: 'pill jp', text: '書類チェック' }) : null,
+        h('div', { class: 'spacer' }), c.feedback ? null : h('span', { class: 'pill', text: 'FB待ち' })),
+      h('strong', { text: c.title }),
+      c.feedback ? h('div', { class: 'case-fb' }, h('span', { class: 'small muted', text: (c.feedbackBy || c.boss) + 'さんから' }), h('p', { text: c.feedback })) : null,
+      c.reflection ? h('div', { class: 'small muted', text: '振り返り：' + c.reflection }) : null));
+  });
+  if (!cs.records.length) append(list, h('p', { class: 'small muted', text: 'まだ記録がありません。案件に上司が同席したら、または書類をチェックしてもらったら記録しましょう。' }));
+  append(card, list);
+  return card;
+}
+function openCaseForm(c) {
+  var staff = isStaff();
+  var mineOk = staff || S.data.me.name === S.trainee;
+  var today = new Date();
+  var pad = function (n) { return ('0' + n).slice(-2); };
+  var date = h('input', { type: 'date', value: c ? c.date.replace(/\//g, '-') : today.getFullYear() + '-' + pad(today.getMonth() + 1) + '-' + pad(today.getDate()) });
+  var title = h('input', { id: 'case-title', placeholder: '例：A様 ○○マンション 申込', value: c ? c.title : '' });
+  var attend = h('input', { type: 'checkbox', id: 'case-attend', style: 'width:auto;margin:0' });
+  attend.checked = c ? c.attend : S.progress.cases.attend < S.progress.cases.required.attend;
+  var docs = h('input', { type: 'checkbox', id: 'case-docs', style: 'width:auto;margin:0' });
+  docs.checked = c ? c.docs : S.progress.cases.docs < S.progress.cases.required.docs;
+  var boss = h('select', null, [h('option', { value: '', text: '選ぶ' })].concat(S.data.members.filter(function (m) { return m.role !== '研修生' && m.status !== '退職'; }).map(function (m) {
+    var o = h('option', { value: m.name, text: m.name });
+    if ((c ? c.boss : (staff ? S.data.me.name : '')) === m.name) o.selected = true;
+    return o;
+  })));
+  var feedback = h('textarea', { id: 'case-feedback', placeholder: staff ? 'よかった点・次に直す点など' : '上司が入れます' });
+  feedback.value = c ? c.feedback : '';
+  feedback.disabled = !staff;
+  var reflection = h('textarea', { id: 'case-reflection', placeholder: 'うまくいったこと・難しかったこと' });
+  reflection.value = c ? c.reflection : '';
+  var btn = h('button', { class: 'btn', id: 'case-save', text: c ? '保存する' : '記録する' });
+  btn.addEventListener('click', function () {
+    var f = { trainee: S.trainee, date: date.value, title: title.value, attend: attend.checked, docs: docs.checked, boss: boss.value, reflection: reflection.value };
+    if (staff) f.feedback = feedback.value;
+    btn.disabled = true;
+    (c ? call('api_updateCaseCheck', c.id, f) : call('api_addCaseCheck', f)).then(function (cs) {
+      S.progress.cases = cs;
+      closeModal();
+      toast(c ? '保存しました' : '記録しました');
+      render();
+    }).catch(function (e) { btn.disabled = false; toast(errMsg(e), true); });
+  });
+  var del = null;
+  if (c && staff) {
+    del = h('button', { class: 'btn ghost', text: '消す' });
+    del.addEventListener('click', function () {
+      if (del.getAttribute('data-armed') !== '1') { del.setAttribute('data-armed', '1'); del.textContent = '本当に消す？'; return; }
+      call('api_removeCaseCheck', c.id).then(function (cs) { S.progress.cases = cs; closeModal(); toast('消しました'); render(); }).catch(function (e) { toast(errMsg(e), true); });
+    });
+  }
+  openModal(c ? '同席・書類チェックの記録' : '同席・書類チェックを記録', [
+    h('div', { class: 'grid2' }, h('label', { class: 'field' }, '日付', date), h('label', { class: 'field' }, '上司', boss)),
+    h('label', { class: 'field' }, '案件（お客様・物件など）', title),
+    h('div', { class: 'row', style: 'gap:18px;margin:4px 0 10px' }, h('label', { class: 'row small', style: 'gap:6px' }, attend, '上司が同席した'), h('label', { class: 'row small', style: 'gap:6px' }, docs, '書類をチェックしてもらった')),
+    h('label', { class: 'field' }, '上司からの感想・フィードバック', feedback, c && c.feedbackBy ? h('div', { class: 'small muted', text: c.feedbackBy + '　' + c.feedbackAt }) : null),
+    h('label', { class: 'field' }, '本人の振り返り', reflection),
+    mineOk ? h('div', { class: 'row', style: 'margin-top:12px' }, btn, h('div', { class: 'spacer' }), del) : null]);
 }
 
 /** 応用編：「応用：〇〇」の扱いのタスクを、〇〇の枠ごとに、カテゴリで分けて並べる */

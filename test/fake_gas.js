@@ -58,6 +58,7 @@ class FakeSheet {
     return new FakeRange(this, a, b, c || 1, d || 1);
   }
   getDataRange() { return new FakeRange(this, 1, 1, this.getLastRow(), this.getLastColumn()); }
+  deleteRow(n) { this.cells.splice(n - 1, 1); return this; }
   appendRow(r) { const row = this.getLastRow() + 1; r.forEach((x, j) => this.set(row, j + 1, x)); return this; }
   setFrozenRows() {}
   setColumnWidth() {}
@@ -144,7 +145,7 @@ function createContext({ userEmail, sourceFlowRows, siteImportRows, docExportHtm
     UrlFetchApp: { fetch: () => ({ getResponseCode: () => 200, getContentText: () => docExportHtml || '<html><body><p>本文</p></body></html>' }) },
   };
   vm.createContext(ctx);
-  for (const f of ['SiteImport.js', 'Manual.js', 'Exam.js', 'Flow.js', 'Editor.js', 'Arikata.js', 'Advanced.js', 'Promotion.js', 'Code.js', 'Setup.js']) {
+  for (const f of ['SiteImport.js', 'Manual.js', 'Exam.js', 'Flow.js', 'Editor.js', 'Arikata.js', 'Advanced.js', 'Promotion.js', 'CaseCheck.js', 'Code.js', 'Setup.js']) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '../gas', f), 'utf8'), ctx, { filename: f });
   }
   // サイトの取り込みはテスト用の行に差し替える
