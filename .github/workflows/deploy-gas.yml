@@ -44,10 +44,25 @@ jobs:
           printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
           echo "ready=true" >> "$GITHUB_OUTPUT"
 
+      # 鍵（CLASPRC_JSON）が切れているときは、失敗にせず警告だけ出して止める（毎回の失敗メールを飛ばさないため）。
+      # それ以外の失敗（コードの不具合など）は今までどおり失敗にする。
       - name: コードを Apps Script に送る
+        id: push
         if: steps.auth.outputs.ready == 'true'
-        run: npx -y @google/clasp@2.4.2 push --force
+        run: |
+          set +e
+          out=$(npx -y @google/clasp@2.4.2 push --force 2>&1); code=$?
+          echo "$out"
+          if [ $code -ne 0 ] && echo "$out" | grep -qE 'invalid_grant|invalid_client|unauthorized_client|Error retrieving access token'; then
+            echo "::warning::clasp の鍵（CLASPRC_JSON）が切れているので、デプロイを飛ばしました。README の「自動デプロイ」の手順で作り直してください"
+            echo "## デプロイしていません" >> "$GITHUB_STEP_SUMMARY"
+            echo "clasp の鍵（CLASPRC_JSON）が切れています。作り直すと次の push で反映されます。" >> "$GITHUB_STEP_SUMMARY"
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          [ $code -eq 0 ] && echo "pushed=true" >> "$GITHUB_OUTPUT"
+          exit $code
 
       - name: デプロイを新バージョンにする（URLはそのまま）
-        if: steps.auth.outputs.ready == 'true'
+        if: steps.push.outputs.pushed == 'true'
         run: npx -y @google/clasp@2.4.2 deploy --deploymentId "$DEPLOYMENT_ID" --description "GitHub ${GITHUB_SHA::7}"
