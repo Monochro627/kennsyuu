@@ -214,6 +214,53 @@ window.google = { script: { url: { getLocation: (cb) => setTimeout(() => cb({ pa
   await t.screenshot({ path: path.join(outDir, '12_exam_result.png'), fullPage: true });
   assert.ok(JSON.parse(JSON.stringify(run(`api_getProgress('小田天誠')`))).examsPassed.includes('EX01'));
 
+  // 編集モード：文言の修正・追加・並び替え（ドラッグと↑）・外す
+  await a.click('nav.tabs button:has-text("卒業フロー")');
+  await a.click('#edit-on');
+  await a.waitForSelector('text=項目の編集');
+  const firstSetup = a.locator('.card:has(h2:text-is("セットアップ研修")) .erow').first();
+  await firstSetup.locator('button[title="直す"]').click();
+  await a.fill('.eform input >> nth=0', 'セットアップ研修（初日）');
+  await a.click('.eform button:has-text("保存")');
+  await a.waitForSelector('text=保存しました');
+  const setupCard = a.locator('.card:has(h2:text-is("セットアップ研修"))');
+  await setupCard.locator('summary:has-text("項目を追加")').click();
+  await setupCard.locator('.eadd input >> nth=0').fill('名刺を受け取る');
+  await setupCard.locator('button:has-text("追加する")').click();
+  await a.waitForSelector('text=追加しました');
+  const ids = async () => a.locator('.card:has(h2:text-is("セットアップ研修")) .erow').evaluateAll((els) => els.map((e) => e.dataset.id));
+  const before = await ids();
+  // 最後の行を ⋮⋮ で一番上へドラッグ
+  const rows = a.locator('.card:has(h2:text-is("セットアップ研修")) .erow');
+  const lastHandle = rows.last().locator('.handle');
+  const firstBox = await rows.first().boundingBox();
+  const hb = await lastHandle.boundingBox();
+  await a.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
+  await a.mouse.down();
+  await a.mouse.move(firstBox.x + 20, firstBox.y + 4, { steps: 8 });
+  await a.mouse.up();
+  await a.waitForSelector('text=並び順を保存しました');
+  const afterDrag = await ids();
+  assert.strictEqual(afterDrag[0], before[before.length - 1], 'dragged to top');
+  // ↑ で2番目を1番目へ
+  await rows.nth(1).locator('button[title="上へ"]').click();
+  await a.waitForTimeout(200);
+  const afterUp = await ids();
+  assert.deepStrictEqual(afterUp.slice(0, 2), [afterDrag[1], afterDrag[0]]);
+  const serverOrder = JSON.parse(JSON.stringify(run('api_bootstrap()'))).tasks.filter((t) => t.phase === 'セットアップ研修').map((t) => t.id);
+  assert.deepStrictEqual(serverOrder, afterUp, 'order saved on server');
+  await a.screenshot({ path: path.join(outDir, '13_edit_mode.png'), fullPage: true });
+  // 外す（2回押す）
+  const target = a.locator('.card:has(h2:text-is("セットアップ研修")) .erow:has-text("名刺を受け取る")');
+  const tid = await target.getAttribute('data-id');
+  await target.locator('button[title="外す"]').click();
+  await target.locator('button:has-text("外す？")').click();
+  await a.waitForSelector('text=保留シートに残っています');
+  assert.ok(!JSON.parse(JSON.stringify(run('api_bootstrap()'))).tasks.some((t) => t.id === tid));
+  await a.click('#edit-off');
+  await a.waitForSelector('text=ルームアドバイザー卒業要件');
+  await a.waitForSelector('label.check:has-text("セットアップ研修（初日）")');
+
   // 宮川さんが入社前フェーズを全部終えると PHASE CLEAR の演出
   const m = await open('miyagawa@monochro-inc.com', 390);
   await m.waitForSelector('text=黒から、白へ。');

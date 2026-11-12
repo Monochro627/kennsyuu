@@ -205,6 +205,50 @@ as('t.oda@monochro-inc.com');
 assert.ok(run(`api_getProgress('小田天誠')`).rows.some((r) => r.id === 'T099'));
 assert.strictEqual(run(`api_setCheck('小田天誠', 'T099', true)`).done, true);
 
+// 編集モード：研修生はできない、教育担当はできる
+as('t.oda@monochro-inc.com');
+assert.throws(() => run(`api_updateItem('task', 'T001', {title:'x'})`), /管理者・教育担当/);
+as('ito@monochro-inc.com');
+run(`api_updateItem('task', 'T001', {title:'セットアップ研修（初日）', point:'行動指針の説明'})`);
+let tk = run('api_bootstrap()').tasks;
+assert.strictEqual(tk.find((t) => t.id === 'T001').title, 'セットアップ研修（初日）');
+assert.strictEqual(tk.find((t) => t.id === 'T001').phase, 'セットアップ研修', 'other fields kept');
+assert.throws(() => run(`api_updateItem('task', 'T001', {title:'  '})`), /項目名/);
+// 追加（T002 の次に）。番号は保留中も含めて続きから
+const added = run(`api_addItem('task', {title:'名刺を受け取る', phase:'セットアップ研修', mode:'チェック'}, 'T002')`);
+assert.strictEqual(added.id, 'T100');
+tk = run('api_bootstrap()').tasks;
+assert.strictEqual(tk[tk.findIndex((t) => t.id === 'T002') + 1].id, 'T100');
+// 並び替え
+const setupIds = tk.filter((t) => t.phase === 'セットアップ研修').map((t) => t.id);
+const reversed = setupIds.slice().reverse();
+const full = reversed.concat(tk.filter((t) => t.phase !== 'セットアップ研修').map((t) => t.id));
+run(`api_saveOrder('task', ${JSON.stringify(full)})`);
+tk = run('api_bootstrap()').tasks;
+assert.deepStrictEqual(tk.filter((t) => t.phase === 'セットアップ研修').map((t) => t.id), reversed);
+assert.strictEqual(tk.length, full.length, 'nothing lost');
+// 削除は保留へ。進捗の数からも外れる
+run(`api_removeItem('task', 'T100')`);
+assert.ok(!run('api_bootstrap()').tasks.some((t) => t.id === 'T100'));
+assert.ok(ss.getSheetByName('タスクマスター（保留）').getDataRange().getValues().some((r) => r[0] === 'T100'));
+assert.strictEqual(run(`api_addItem('task', {title:'次のタスク', phase:'セットアップ研修'})`).id, 'T101', 'held ids not reused');
+// フェーズ名の変更
+assert.strictEqual(run(`api_renamePhase('依頼コンサル', 'コンサル（メモ）')`).count, 4);
+assert.ok(run('api_bootstrap()').tasks.some((t) => t.phase === 'コンサル（メモ）' && t.mode === 'メモ'));
+// 卒業要件
+run(`api_updateItem('goal', 'G03', {title:'OJT 10件（レポート入力）'})`);
+const g = run(`api_addItem('goal', {title:'インスタ初投稿', detail:'アカウント設計のあと'}, 'G03')`);
+assert.strictEqual(g.id, 'G10');
+let goals = run('api_bootstrap()').goals;
+assert.strictEqual(goals[3].id, 'G10');
+assert.strictEqual(goals.find((x) => x.id === 'G03').detail, 'OJT用レポートの入力件数でカウントする', 'detail kept');
+// 新しい卒業要件は研修生の進捗にも足される
+as('t.oda@monochro-inc.com');
+assert.ok(run(`api_getProgress('小田天誠')`).rows.some((r) => r.id === 'G10'));
+as('ito@monochro-inc.com');
+run(`api_removeItem('goal', 'G10')`);
+assert.strictEqual(run('api_bootstrap()').goals.length, 9);
+
 // メンバー表にいない人は使えない
 as('stranger@example.com');
 assert.throws(() => run('api_bootstrap()'), /権限がありません/);

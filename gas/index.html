@@ -342,6 +342,22 @@
   table.res td:first-child, table.res th:first-child { text-align: left; }
   .tab-dot { display: inline-grid; place-items: center; min-width: 17px; height: 17px; border-radius: 99px; background: var(--ink); color: #fff; font: 800 .6rem var(--en); padding: 0 4px; margin-left: 2px; }
 
+  /* 編集モード */
+  .edit-bar { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-bottom: 12px; }
+  .elist { display: grid; gap: 6px; }
+  .erow { display: flex; align-items: center; gap: 10px; border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; background: #fff; }
+  .erow.dragging { opacity: .6; border-color: var(--ink); box-shadow: 0 8px 22px rgba(0,0,0,.12); }
+  .erow .handle { cursor: grab; touch-action: none; user-select: none; color: var(--g4); font-weight: 800; letter-spacing: -2px; padding: 6px 4px; flex: none; }
+  .erow .t { flex: 1; min-width: 0; }
+  .erow .main { font-weight: 500; overflow-wrap: anywhere; }
+  .eacts { display: flex; gap: 4px; flex: none; }
+  .eacts button { border: 1px solid var(--line); background: #fff; border-radius: 8px; min-width: 34px; height: 34px; cursor: pointer; font: 700 .85rem var(--jp); color: var(--ink); }
+  .eacts button.armed { background: var(--ink); color: #fff; border-color: var(--ink); padding: 0 8px; }
+  .eform { border: 1.5px solid var(--ink); border-radius: 12px; padding: 12px; background: var(--paper); margin: 6px 0; }
+  .eadd { margin-top: 10px; }
+  .eadd summary { cursor: pointer; font-weight: 700; font-size: .9rem; }
+  @media (max-width: 560px) { .eacts button { min-width: 30px; height: 30px; } }
+
   /* モーダル */
   .modal { position: fixed; inset: 0; z-index: 30; background: rgba(13,13,13,.6); display: flex; align-items: center; justify-content: center; padding: 12px; animation: fade .2s; }
   .modal .panel { background: #fff; border-radius: 20px; width: min(860px, 100%); max-height: 94vh; overflow: auto; animation: rise .25s cubic-bezier(.2,.8,.2,1); }
@@ -670,7 +686,12 @@ function snapshot() {
 }
 
 function viewHome() {
+  if (S.edit && isStaff()) return viewEdit();
   var wrap = h('div');
+  if (isStaff()) {
+    append(wrap, h('div', { class: 'edit-bar' }, h('span', { class: 'small muted', text: '卒業要件・研修フローの項目を直す' }),
+      h('button', { class: 'btn ghost', id: 'edit-on', text: '✎ 編集モード', onclick: function () { S.edit = true; render(); window.scrollTo(0, 0); } })));
+  }
   if (!S.trainee) {
     append(wrap, h('div', { class: 'card' }, h('div', { class: 'empty' }, emptyArt(), h('p', { text: '研修生がまだいません。「管理」タブから追加してください。' }))));
     return wrap;
@@ -870,6 +891,182 @@ function memoRow(t, state, editable, extra) {
     date);
   cb.addEventListener('change', function () { toggle(t.id, cb.checked, row, cb); });
   return row;
+}
+
+// ---------- 編集モード（管理者・教育担当） ----------
+/** タスクの置き場所（まとまり）。研修フロー・卒業要件の中身・入社からの目安・ロープレの種類 */
+function taskGroups() {
+  var groups = [];
+  var add = function (key, label, phase, mode, note) {
+    var g = groups.filter(function (x) { return x.key === key; })[0];
+    if (!g) groups.push(g = { key: key, label: label, phase: phase, mode: mode, note: note, tasks: [] });
+    return g;
+  };
+  S.data.tasks.forEach(function (t) {
+    var m = String(t.mode || '');
+    var g;
+    if (!m || m === 'チェック' || m === 'メモ') g = add('phase:' + t.phase, t.phase, t.phase, m || 'チェック', m === 'メモ' ? 'メモ（実施日つき・進捗率に入らない）' : '研修フロー（チェック）');
+    else if (/^G\d+$/.test(m)) {
+      var goal = S.data.goals.filter(function (x) { return x.id === m; })[0];
+      g = add('goal:' + m, (goal ? goal.title : m) + ' のやること', t.phase, m, '卒業要件を開いたときに出る項目');
+    } else if (m.indexOf('目安：') === 0) g = add('guide:' + m, '入社からの目安：' + m.slice(3), t.phase, m, '目安の表の列（チェックなし）');
+    else g = add('mode:' + m, t.phase, t.phase, m, m === 'ロープレ一覧' ? 'ロープレのページの「ロープレの種類」' : '');
+    g.tasks.push(t);
+  });
+  return groups;
+}
+function viewEdit() {
+  var wrap = h('div');
+  append(wrap, h('div', { class: 'card ink dots' }, h('div', { class: 'eyebrow', text: 'Edit Mode' }),
+    h('div', { style: 'font-weight:700;font-size:1.2rem;margin:6px 0 4px', text: '項目の編集' }),
+    h('p', { class: 'small', style: 'opacity:.75;margin:0 0 12px', text: '⋮⋮ を押したまま動かすか、↑↓で並び替えます。✎で文言を直し、🗑で外します（外した項目は「（保留）」のシートに残るので、戻せます）。変更はすぐ保存され、研修生全員の画面に反映されます。' }),
+    h('button', { class: 'btn', id: 'edit-off', text: '編集を終わる', onclick: function () { S.edit = false; S.progress = null; render(); window.scrollTo(0, 0); } })));
+
+  append(wrap, editList('goal', 'ルームアドバイザー卒業要件', '卒業要件（バッジと縦のリスト）', S.data.goals, null));
+  var groups = taskGroups();
+  groups.forEach(function (g) { append(wrap, editList('task', g.label, g.note, g.tasks, g)); });
+  // 新しいまとまり（研修フロー）を作る
+  var newName = h('input', { id: 'new-phase', placeholder: '新しいまとまりの名前（例：入社1週目）' });
+  var newMode = h('select', { id: 'new-phase-mode' }, [h('option', { value: 'チェック', text: 'チェック（進捗率に入る）' }), h('option', { value: 'メモ', text: 'メモ（実施日つき）' })]);
+  var newTitle = h('input', { id: 'new-phase-first', placeholder: '最初の項目' });
+  append(wrap, h('div', { class: 'card' }, h('div', { class: 'eyebrow', text: 'New Group' }), h('h2', { class: 'title', text: '研修フローにまとまりを足す' }),
+    h('div', { class: 'grid2' }, h('label', { class: 'field' }, 'まとまりの名前', newName), h('label', { class: 'field' }, '種類', newMode)),
+    h('label', { class: 'field' }, '最初の項目', newTitle),
+    h('button', { class: 'btn ghost', text: '＋ まとまりを作る', onclick: function () {
+      if (!newName.value.trim() || !newTitle.value.trim()) { toast('名前と最初の項目を入れてください', true); return; }
+      call('api_addItem', 'task', { phase: newName.value, title: newTitle.value, mode: newMode.value }, null).then(afterEdit('まとまりを作りました')).catch(function (e) { toast(errMsg(e), true); });
+    } })));
+  return wrap;
+}
+function afterEdit(msg) {
+  return function () {
+    return call('api_bootstrap').then(function (d) { S.data = d; S.progress = null; toast(msg); render(); });
+  };
+}
+/** 並べ替え・編集できるリスト。kind は goal / task、group はタスクの置き場所 */
+function editList(kind, title, note, items, group) {
+  var list = h('div', { class: 'elist', 'data-kind': kind });
+  items.forEach(function (it) { append(list, editRow(kind, it, group, list)); });
+  var head = h('div', { class: 'row' }, h('div', { style: 'min-width:0;flex:1' }, h('div', { class: 'eyebrow', text: note || '' }), h('h2', { class: 'title', style: 'margin:4px 0 10px', text: title })));
+  if (group && group.key.indexOf('phase:') === 0) {
+    append(head, h('button', { class: 'btn ghost', text: '✎ 名前', onclick: function () {
+      var input = h('input', { value: group.phase });
+      var box = h('div', { class: 'eform' }, h('label', { class: 'field' }, 'まとまりの名前', input),
+        h('div', { class: 'row' }, h('button', { class: 'btn', text: '保存', onclick: function () {
+          call('api_renamePhase', group.phase, input.value).then(afterEdit('名前を変えました')).catch(function (e) { toast(errMsg(e), true); });
+        } }), h('button', { class: 'btn ghost', text: 'やめる', onclick: function () { box.remove(); } })));
+      head.after(box);
+      input.focus();
+    } }));
+  }
+  // 追加フォーム
+  var aTitle = h('input', { placeholder: kind === 'goal' ? '卒業要件の名前' : '項目の名前' });
+  var aSub = h('input', { placeholder: kind === 'goal' ? '説明（任意）' : 'ポイント・補足（任意）' });
+  var addBox = h('details', { class: 'eadd' }, h('summary', { text: '＋ 項目を追加' }),
+    h('div', { class: 'grid2', style: 'margin-top:8px' }, aTitle, aSub),
+    h('button', { class: 'btn ghost', style: 'margin-top:8px', text: '追加する', onclick: function () {
+      var f = kind === 'goal' ? { title: aTitle.value, detail: aSub.value } : { title: aTitle.value, point: aSub.value, phase: group.phase, mode: group.mode };
+      var last = items.length ? items[items.length - 1].id : null;
+      call('api_addItem', kind, f, last).then(afterEdit('追加しました')).catch(function (e) { toast(errMsg(e), true); });
+    } }));
+  sortable(list, function (ids) { saveOrder(kind, ids); });
+  return h('div', { class: 'card' }, head, list, addBox);
+}
+function editRow(kind, it, group, list) {
+  var sub = kind === 'goal' ? it.detail : it.point;
+  var row = h('div', { class: 'erow', 'data-id': it.id },
+    h('span', { class: 'handle', title: '押したまま動かす', 'aria-label': '並び替え', text: '⋮⋮' }),
+    h('div', { class: 't' }, h('div', { class: 'main', text: it.title }), sub ? h('div', { class: 'small muted', text: sub }) : null),
+    h('div', { class: 'eacts' },
+      h('button', { type: 'button', title: '上へ', text: '↑', onclick: function () { move(row, -1); } }),
+      h('button', { type: 'button', title: '下へ', text: '↓', onclick: function () { move(row, 1); } }),
+      h('button', { type: 'button', title: '直す', text: '✎', onclick: function () { editForm(kind, it, group, row); } }),
+      h('button', { type: 'button', title: '外す', class: 'del', text: '🗑', onclick: function () { removeItem(kind, it, this); } })));
+  var move = function (el, dir) {
+    var sib = dir < 0 ? el.previousElementSibling : el.nextElementSibling;
+    if (!sib) return;
+    if (dir < 0) list.insertBefore(el, sib); else list.insertBefore(sib, el);
+    saveOrder(kind, Array.prototype.map.call(list.children, function (c) { return c.getAttribute('data-id'); }));
+  };
+  return row;
+}
+function editForm(kind, it, group, row) {
+  var title = h('input', { value: it.title });
+  var sub = h('input', { value: (kind === 'goal' ? it.detail : it.point) || '', placeholder: kind === 'goal' ? '説明' : 'ポイント・補足' });
+  var place = null;
+  if (kind === 'task') {
+    // 置き場所を変える（研修フローのまとまり・卒業要件の中身・目安・ロープレの種類）
+    place = h('select', null, taskGroups().map(function (g) {
+      var o = h('option', { value: g.key, text: g.label });
+      if (group && g.key === group.key) o.selected = true;
+      return o;
+    }));
+  }
+  var box = h('div', { class: 'eform' },
+    h('label', { class: 'field' }, kind === 'goal' ? '卒業要件の名前' : '項目の名前', title),
+    h('label', { class: 'field' }, kind === 'goal' ? '説明' : 'ポイント・補足', sub),
+    place ? h('label', { class: 'field' }, '置き場所', place) : null,
+    h('div', { class: 'row' }, h('button', { class: 'btn', text: '保存', onclick: function () {
+      var f = kind === 'goal' ? { title: title.value, detail: sub.value } : { title: title.value, point: sub.value };
+      if (place) {
+        var g = taskGroups().filter(function (x) { return x.key === place.value; })[0];
+        if (g) { f.phase = g.phase; f.mode = g.mode; }
+      }
+      call('api_updateItem', kind, it.id, f).then(afterEdit('保存しました')).catch(function (e) { toast(errMsg(e), true); });
+    } }), h('button', { class: 'btn ghost', text: 'やめる', onclick: function () { box.replaceWith(row); } })));
+  row.replaceWith(box);
+  title.focus();
+}
+function removeItem(kind, it, btn) {
+  if (btn.getAttribute('data-armed') !== '1') {
+    btn.setAttribute('data-armed', '1');
+    btn.textContent = '外す？';
+    btn.classList.add('armed');
+    setTimeout(function () { if (btn.isConnected) { btn.removeAttribute('data-armed'); btn.textContent = '🗑'; btn.classList.remove('armed'); } }, 3000);
+    return;
+  }
+  call('api_removeItem', kind, it.id).then(afterEdit('「' + it.title + '」を外しました（保留シートに残っています）')).catch(function (e) { toast(errMsg(e), true); });
+}
+/** リストの並び（そのリストの ID の順）を、全体の並びに組み込んで保存する */
+function saveOrder(kind, ids) {
+  var all = kind === 'goal' ? S.data.goals : S.data.tasks;
+  var inList = {};
+  ids.forEach(function (id) { inList[id] = true; });
+  var queue = ids.slice();
+  var next = all.map(function (x) { return inList[x.id] ? queue.shift() : x.id; });
+  var byId = {};
+  all.forEach(function (x) { byId[x.id] = x; });
+  var reordered = next.map(function (id) { return byId[id]; });
+  if (kind === 'goal') S.data.goals = reordered; else S.data.tasks = reordered;
+  call('api_saveOrder', kind, next).then(function () { toast('並び順を保存しました'); }).catch(function (e) { toast(errMsg(e), true); render(); });
+}
+/** ⋮⋮ を押したまま動かして並び替える（マウスとタッチの両方） */
+function sortable(list, onDrop) {
+  var dragging = null;
+  list.addEventListener('pointerdown', function (e) {
+    var handle = e.target.closest('.handle');
+    if (!handle) return;
+    dragging = handle.closest('.erow');
+    dragging.classList.add('dragging');
+    handle.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+  list.addEventListener('pointermove', function (e) {
+    if (!dragging) return;
+    var over = document.elementFromPoint(e.clientX, e.clientY);
+    var target = over && over.closest('.erow');
+    if (!target || target === dragging || target.parentNode !== list) return;
+    var r = target.getBoundingClientRect();
+    list.insertBefore(dragging, e.clientY > r.top + r.height / 2 ? target.nextSibling : target);
+  });
+  var end = function () {
+    if (!dragging) return;
+    dragging.classList.remove('dragging');
+    dragging = null;
+    onDrop(Array.prototype.map.call(list.children, function (c) { return c.getAttribute('data-id'); }));
+  };
+  list.addEventListener('pointerup', end);
+  list.addEventListener('pointercancel', end);
 }
 
 function checkRow(id, title, detail, extra, st, editable, num, pt) {
