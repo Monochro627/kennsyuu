@@ -81,6 +81,15 @@ window.google = { script: { url: { getLocation: (cb) => setTimeout(() => cb({ pa
   const p = await open('t.oda@monochro-inc.com', 390);
   await p.waitForSelector('text=ルームアドバイザー卒業要件');
   await p.screenshot({ path: path.join(outDir, '1_home_trainee.png'), fullPage: true });
+  // 「あり方」は最初のバッジ。開くとカテゴリごとのチェック項目が出る
+  assert.strictEqual((await p.locator('button.goal .gname').first().textContent()).trim(), 'あり方');
+  await p.click('button.goal:has-text("あり方")');
+  await p.waitForSelector('#goal-G10[open] .subcat-head:has-text("身だしなみ・第一印象")');
+  assert.strictEqual(await p.locator('#goal-G10 .subcat').count(), 5);
+  await p.click('#goal-G10 label.check:has-text("LINEのアイコン")');
+  await p.waitForSelector('#goal-G10 .subcat-head:has-text("1 / 4")');
+  await p.locator('#goal-G10').screenshot({ path: path.join(outDir, '1b_arikata.png') });
+  await p.click('#goal-G10 summary');
   // 卒業要件のバッジを押すと詳細が開き、達成にできる
   // 質問の4大原則は現在地のすぐ下
   const order = await p.evaluate(() => [...document.querySelectorAll('main .card')].slice(0, 3).map((c) => c.textContent.slice(0, 20)));
@@ -100,7 +109,7 @@ window.google = { script: { url: { getLocation: (cb) => setTimeout(() => cb({ pa
   await p.waitForSelector('text=実施日を 2026/11/05 にしました');
   await p.screenshot({ path: path.join(outDir, '1b_goal_detail.png'), fullPage: true });
   await p.locator('label.check', { hasText: '業務契約締結' }).click();
-  await p.waitForSelector('text=✓ 小田天誠');
+  await p.waitForSelector('label.check:has-text("業務契約締結") .meta:has-text("✓ 小田天誠")');
   await p.waitForTimeout(200);
   while (await p.locator('.celebrate').count()) await p.click('.celebrate');
   assert.strictEqual(JSON.parse(JSON.stringify(run(`api_getProgress('小田天誠')`))).rows.find((r) => r.id === 'T002').done, true);

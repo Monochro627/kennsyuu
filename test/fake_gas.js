@@ -133,7 +133,7 @@ function createContext({ userEmail, sourceFlowRows, siteImportRows, docExportHtm
     UrlFetchApp: { fetch: () => ({ getResponseCode: () => 200, getContentText: () => docExportHtml || '<html><body><p>本文</p></body></html>' }) },
   };
   vm.createContext(ctx);
-  for (const f of ['SiteImport.js', 'Manual.js', 'Exam.js', 'Flow.js', 'Editor.js', 'Code.js', 'Setup.js']) {
+  for (const f of ['SiteImport.js', 'Manual.js', 'Exam.js', 'Flow.js', 'Editor.js', 'Arikata.js', 'Code.js', 'Setup.js']) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '../gas', f), 'utf8'), ctx, { filename: f });
   }
   // サイトの取り込みはテスト用の行に差し替える

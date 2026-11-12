@@ -60,8 +60,16 @@ as('owner@monochro-inc.com');
 let boot = run('api_bootstrap()');
 assert.strictEqual(boot.me.role, '管理者');
 assert.strictEqual(boot.me.name, '小嶋勇輝');
-assert.strictEqual(boot.goals.length, 9);
-assert.strictEqual(boot.tasks.length, 20);
+assert.strictEqual(boot.goals.length, 10);
+// 「あり方」は卒業要件の一番上。中身はカテゴリつきのタスク（扱い＝要件のID）
+assert.strictEqual(boot.goals[0].id, 'G10');
+assert.ok(/^あり方/.test(boot.goals[0].title));
+const arikata = boot.tasks.filter((t) => t.mode === 'G10');
+assert.strictEqual(arikata.length, 17);
+assert.ok(arikata.every((t) => t.category && t.point.endsWith('状態')));
+assert.strictEqual(boot.tasks.length, 20 + 17);
+// 何度開いても増えない
+assert.strictEqual(run('api_bootstrap()').tasks.length, 20 + 17);
 assert.strictEqual(boot.materials.length, 3);
 
 // メンバー追加
@@ -176,8 +184,8 @@ assert.strictEqual(bulk.skipped.length, 1);
 
 // 進捗に数えるのは卒業要件とチェック扱いのタスクだけ（メモ・事務作業ワークの中身は数えない）
 let pr = run(`api_getProgress('小田天誠')`);
-assert.strictEqual(pr.rows.length, 9 + 12, 'goals + tasks with progress rows');
-assert.strictEqual(pr.rows.filter((r) => r.counts).length, 9 + 7);
+assert.strictEqual(pr.rows.length, 10 + 12 + 17, 'goals + tasks with progress rows');
+assert.strictEqual(pr.rows.filter((r) => r.counts).length, 10 + 7);
 // メモのタスク：チェックすると実施日に今日が入り、日付は直せる。進捗率は変わらない
 as('t.oda@monochro-inc.com');
 const pct0 = run('api_bootstrap()').summaries[0].percent;
@@ -194,7 +202,7 @@ const hold = ss.insertSheet('タスクマスター（保留）');
 hold.appendRow(['ID', 'フェーズ', 'カテゴリ', 'タスク', 'ポイント']);
 hold.appendRow(['T050', '8. 1カ月間', 'コンサルティング', 'ブランドマップ信念', '']);
 const re = run('api_restructureFlow()');
-assert.strictEqual(re.total, 22, '20 + the held row + its guide row');
+assert.strictEqual(re.total, 22 + 17, '20 + the held row + its guide row + あり方');
 const t2 = run('api_bootstrap()').tasks;
 assert.strictEqual(t2.find((t) => t.id === 'T050').mode, 'メモ');
 assert.strictEqual(new Set(t2.map((t) => t.id)).size, t2.length, 'no duplicate ids');
@@ -238,16 +246,20 @@ assert.ok(run('api_bootstrap()').tasks.some((t) => t.phase === 'コンサル（�
 // 卒業要件
 run(`api_updateItem('goal', 'G03', {title:'OJT 10件（レポート入力）'})`);
 const g = run(`api_addItem('goal', {title:'インスタ初投稿', detail:'アカウント設計のあと'}, 'G03')`);
-assert.strictEqual(g.id, 'G10');
+assert.strictEqual(g.id, 'G11');
 let goals = run('api_bootstrap()').goals;
-assert.strictEqual(goals[3].id, 'G10');
+assert.strictEqual(goals[4].id, 'G11');
 assert.strictEqual(goals.find((x) => x.id === 'G03').detail, 'OJT用レポートの入力件数でカウントする', 'detail kept');
 // 新しい卒業要件は研修生の進捗にも足される
 as('t.oda@monochro-inc.com');
-assert.ok(run(`api_getProgress('小田天誠')`).rows.some((r) => r.id === 'G10'));
+assert.ok(run(`api_getProgress('小田天誠')`).rows.some((r) => r.id === 'G11'));
 as('ito@monochro-inc.com');
-run(`api_removeItem('goal', 'G10')`);
-assert.strictEqual(run('api_bootstrap()').goals.length, 9);
+run(`api_removeItem('goal', 'G11')`);
+assert.strictEqual(run('api_bootstrap()').goals.length, 10);
+// 「あり方」の項目を外しても、開き直したときに勝手に戻らない
+const ari = run('api_bootstrap()').tasks.find((t) => t.mode === 'G10');
+run(`api_removeItem('task', '${ari.id}')`);
+assert.ok(!run('api_bootstrap()').tasks.some((t) => t.id === ari.id));
 
 // メンバー表にいない人は使えない
 as('stranger@example.com');

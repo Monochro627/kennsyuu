@@ -81,6 +81,8 @@ function setup() {
   });
 
   ensureExamSheets_();
+  p.setProperty('ARIKATA_ADDED', '');
+  ensureArikata_();
   writeMaterials_(ss, importSite_(manuals.getId()));
   Logger.log('初期設定が完了しました。データ: ' + ss.getUrl());
 }

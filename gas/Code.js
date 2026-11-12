@@ -285,6 +285,7 @@ function summaries_(members) {
 function api_bootstrap() {
   var me = currentUser_();
   ensureExamSheets_();
+  ensureArikata_();
   var members = members_();
   var goals = readTable_(sheet_(SHEET.GOALS)).map(function (g) {
     return { id: String(g['ID']), title: g['条件'], detail: g['詳細'] || '' };
