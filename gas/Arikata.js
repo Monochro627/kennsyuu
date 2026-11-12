@@ -1,5 +1,6 @@
 /**
- * 卒業要件「あり方」。知識（試験）ややり方（ロープレ）の前に、まわりから信頼される人であるかを見る。
+ * 卒業要件「あり方」と「実務スキル」。
+ * 「あり方」は知識（試験）ややり方（ロープレ）の前に、まわりから信頼される人であるかを見る。
  * 中身はタスクマスターの「扱い」をこの要件の ID にした行で、カテゴリごとに「〇〇ができている状態」を並べる。
  * 一度足したら二度と自動では足さない（編集モードで直した・外した内容を守るため）。
  */
@@ -10,6 +11,8 @@ var ARIKATA_DETAIL = '知識（試験）ややり方（ロープレ）の前に�
 
 // [カテゴリ, 項目, できている状態]
 var ARIKATA_ITEMS = [
+  ['Monochroの理解', '他社との違い', 'Monochroが他社と何が違うのかを、お客様に自分の言葉で説明できている状態'],
+  ['Monochroの理解', '創業の思い', 'どんな思いでMonochroが創業されたのかを、自分の言葉で説明できている状態'],
   ['身だしなみ・第一印象', '身だしなみ', '清潔感のある髪型・服装・爪・靴で、毎日お客様の前に立てている状態'],
   ['身だしなみ・第一印象', 'LINEのアイコン・名前', 'LINEのアイコン・表示名・背景が、お客様が見て安心できるものになっている状態'],
   ['身だしなみ・第一印象', '挨拶・笑顔', '社内外の誰にでも、自分から明るく先に挨拶ができている状態'],
@@ -25,33 +28,63 @@ var ARIKATA_ITEMS = [
   ['仕事への向き合い方', '情報の扱い', 'お客様の個人情報や社外秘の資料を正しく扱い、SNSに仕事の情報を出していない状態'],
   ['仕事への向き合い方', '感謝を伝える', '助けてもらったことに、その場でお礼を伝えられている状態'],
   ['仕事への向き合い方', 'チームで動く', '自分の仕事が落ち着いたら、まわりに手伝えることがないか声をかけている状態'],
-  ['お客様への姿勢', 'お客様目線', 'お客様の希望と不安を先に聞き、自分の都合で物件を勧めていない状態'],
-  ['お客様への姿勢', '誠実さ', '物件のよくない点や費用も、隠さずに正直に伝えられている状態']
+  ['お客様・管理会社様への姿勢', 'お客様目線', 'お客様の希望と不安を先に聞き、自分の都合で物件を勧めていない状態'],
+  ['お客様・管理会社様への姿勢', '誠実さ', '物件のよくない点や費用も、隠さずに正直に伝えられている状態'],
+  ['お客様・管理会社様への姿勢', '管理会社様への対応', '管理会社様への電話・メール・来店時の対応が丁寧で、物件確認や申込の連絡を気持ちよく進められている状態']
 ];
 
-/** 「あり方」の要件と中身がまだなければ足す（setup とアプリを開いたときに呼ぶ） */
-function ensureArikata_() {
+// 実務スキル：お客様の前での説明と、書類づくり
+var SKILL_TITLE = '実務スキル（説明・書類・期待値調整）';
+var SKILL_DETAIL = 'お客様の前で迷わず説明でき、書類を正しく作れるか。' +
+  '教育担当が実際の説明や書類を見て確認し、すべてできていれば「達成」にする。';
+var SKILL_ITEMS = [
+  ['説明', '設備の理解', '物件の設備（エアコン・給湯器・オートロック・独立洗面台など）の特徴と使い方を、お客様に説明できている状態'],
+  ['説明', '初期費用の説明', '敷金・礼金・仲介手数料・保証会社・火災保険など初期費用の内訳を、ひと通りさらっと説明できている状態'],
+  ['書類づくり', '概算見積書の作成', '概算見積書を、間違いなく早く作れている状態'],
+  ['書類づくり', '重要事項説明書の作成', '重要事項説明書を、物件資料と照らし合わせて正しく作れている状態'],
+  ['商談', '期待値調整', '審査・入居日・初期費用・物件の状態などについてお客様の期待を先にそろえ、あとで「話が違う」とならないようにできている状態']
+];
+
+// 自動で足す卒業要件。key のプロパティが入ったら二度と足さない
+var SEED_GOALS = [
+  { key: 'ARIKATA_ADDED', title: ARIKATA_TITLE, detail: ARIKATA_DETAIL, items: ARIKATA_ITEMS, phase: 'あり方' },
+  { key: 'SKILL_ADDED', title: SKILL_TITLE, detail: SKILL_DETAIL, items: SKILL_ITEMS, phase: '実務スキル' }
+];
+
+/** 「あり方」「実務スキル」の要件と中身がまだなければ足す（setup とアプリを開いたときに呼ぶ） */
+function ensureSeedGoals_() {
   var p = props_();
-  if (p.getProperty('ARIKATA_ADDED')) return;
+  var todo = SEED_GOALS.filter(function (s) { return !p.getProperty(s.key); });
+  if (!todo.length) return;
   withLock_(function () {
-    if (p.getProperty('ARIKATA_ADDED')) return;
     var g = EDIT_TARGET.goal;
-    var goals = readRows_(g);
-    var goal = goals.filter(function (r) { return /^あり方/.test(String(r[1])); })[0];
-    var goalId = goal ? String(goal[0]) : nextId_(g, goals);
-    if (!goal) {
-      // 知識・やり方の土台なので、卒業要件の一番上に置く
-      goals.unshift([goalId, ARIKATA_TITLE, ARIKATA_DETAIL]);
-      writeRows_(g, goals);
-    }
     var t = EDIT_TARGET.task;
-    var tasks = readRows_(t);
-    if (!tasks.some(function (r) { return String(r[5]) === goalId; })) {
-      ARIKATA_ITEMS.forEach(function (it) {
-        tasks.push([nextId_(t, tasks), 'あり方', it[0], it[1], it[2], goalId]);
-      });
-      writeRows_(t, tasks);
-    }
-    p.setProperty('ARIKATA_ADDED', goalId);
+    var placed = 0;
+    SEED_GOALS.forEach(function (seed) {
+      var goals = readRows_(g);
+      var name = seed.title.replace(/（.*$/, '');
+      var found = goals.filter(function (r) { return String(r[1]).replace(/（.*$/, '') === name; })[0];
+      if (p.getProperty(seed.key)) {
+        if (found) placed = goals.indexOf(found) + 1;
+        return;
+      }
+      var goalId = found ? String(found[0]) : nextId_(g, goals);
+      if (!found) {
+        // 知識・やり方の土台なので、卒業要件の一番上から順に置く
+        goals.splice(placed, 0, [goalId, seed.title, seed.detail]);
+        writeRows_(g, goals);
+        placed++;
+      } else {
+        placed = goals.indexOf(found) + 1;
+      }
+      var tasks = readRows_(t);
+      if (!tasks.some(function (r) { return String(r[5]) === goalId; })) {
+        seed.items.forEach(function (it) {
+          tasks.push([nextId_(t, tasks), seed.phase, it[0], it[1], it[2], goalId]);
+        });
+        writeRows_(t, tasks);
+      }
+      p.setProperty(seed.key, goalId);
+    });
   });
 }

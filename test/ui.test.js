@@ -85,7 +85,8 @@ window.google = { script: { url: { getLocation: (cb) => setTimeout(() => cb({ pa
   assert.strictEqual((await p.locator('button.goal .gname').first().textContent()).trim(), 'あり方');
   await p.click('button.goal:has-text("あり方")');
   await p.waitForSelector('#goal-G10[open] .subcat-head:has-text("身だしなみ・第一印象")');
-  assert.strictEqual(await p.locator('#goal-G10 .subcat').count(), 5);
+  assert.strictEqual(await p.locator('#goal-G10 .subcat').count(), 6);
+  assert.strictEqual((await p.locator('button.goal .gname').nth(1).textContent()).trim(), '実務スキル');
   await p.click('#goal-G10 label.check:has-text("LINEのアイコン")');
   await p.waitForSelector('#goal-G10 .subcat-head:has-text("1 / 4")');
   await p.locator('#goal-G10').screenshot({ path: path.join(outDir, '1b_arikata.png') });
