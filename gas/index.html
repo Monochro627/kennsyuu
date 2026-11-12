@@ -367,6 +367,46 @@
   .principles ol { margin: 8px 0 0; padding-left: 1.5em; }
   .principles summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 10px; }
   .principles summary::-webkit-details-marker { display: none; }
+
+  /* 編集モード（管理者）：項目の文言修正・ドラッグで並び替え・追加・保留 */
+  .edit-toggle { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: #fff; color: var(--ink); border-radius: 99px; padding: 6px 12px; font: 700 .75rem var(--jp); cursor: pointer; white-space: nowrap; }
+  .edit-toggle svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; }
+  .edit-toggle:hover { border-color: var(--ink); }
+  body.sorting { user-select: none; -webkit-user-select: none; }
+  .edit-done { display: flex; justify-content: center; margin: 20px 0 8px; }
+  .edit-bar .row { gap: 8px 12px; }
+  .edit-bar p { margin: 6px 0 0; font-size: .78rem; opacity: .75; }
+  .elist { display: grid; gap: 6px; margin: 0; padding: 0; }
+  .erow { display: flex; align-items: flex-start; gap: 6px; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 6px 6px 6px 2px; }
+  .erow .grip { flex: none; width: 34px; min-height: 38px; border: 0; background: none; color: var(--g4); cursor: grab; touch-action: none; display: grid; place-items: center; border-radius: 8px; padding: 0; }
+  .erow .grip svg { width: 18px; height: 18px; fill: currentColor; }
+  .erow .grip:hover, .erow .grip:focus-visible { color: var(--ink); background: var(--paper); outline: none; }
+  .erow .et { flex: 1; min-width: 0; padding: 7px 0; overflow-wrap: anywhere; }
+  .erow .et .small { margin-top: 2px; }
+  .erow .enum { font: 800 .7rem var(--en); color: var(--g5); flex: none; padding-top: 10px; }
+  .erow .epen { flex: none; border: 0; background: var(--paper); width: 34px; height: 34px; border-radius: 50%; cursor: pointer; display: grid; place-items: center; margin-top: 2px; }
+  .erow .epen svg { width: 15px; height: 15px; stroke: var(--ink); fill: none; stroke-width: 1.8; }
+  .erow.dragging { box-shadow: 0 14px 30px rgba(0,0,0,.18); border-color: var(--ink); cursor: grabbing; pointer-events: none; }
+  .erow.dragging .grip { cursor: grabbing; color: var(--ink); }
+  .erow-ph { border: 1.5px dashed var(--g5); border-radius: 12px; background: var(--paper); }
+  .erow.saved { animation: flash 1s; }
+  @keyframes flash { from { background: #f0efe9; } to { background: #fff; } }
+  .eadd { margin-top: 8px; border: 1.5px dashed var(--line); background: none; border-radius: 12px; padding: 9px 12px; width: 100%; text-align: left; font: 700 .82rem var(--jp); color: var(--mute); cursor: pointer; }
+  .eadd:hover { border-color: var(--ink); color: var(--ink); }
+  .ephase { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 12px; margin-bottom: 12px; }
+  .ephase-head { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+  .ephase-head strong { flex: 1; min-width: 0; }
+  .icon-btn { border: 1px solid var(--line); background: #fff; border-radius: 99px; height: 30px; min-width: 30px; padding: 0 10px; font: 700 .72rem var(--jp); cursor: pointer; color: var(--ink); }
+  .icon-btn:disabled { opacity: .3; cursor: default; }
+  .egoal { border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+  .egoal > .erow { border: 0; }
+  .egoal details { padding: 0 10px 10px 40px; }
+  .egoal summary { font-size: .76rem; color: var(--mute); cursor: pointer; }
+  .egoal details .elist { margin-top: 8px; }
+  .eguide { display: grid; gap: 12px; }
+  @media (min-width: 820px) { .eguide { grid-template-columns: repeat(3, 1fr); } }
+  .eguide h3 { margin: 0 0 8px; font-size: .85rem; }
+  .modal .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 6px; }
 </style>
 </head>
 <body>
@@ -423,7 +463,7 @@ var ROLEPLAY_TOPICS = ['【試験①】カウンセリング面談', '【試験�
   '初期費用の説明', '申込み後の流れ', 'クロージング', 'アウトトーク', '紹介依頼'];
 var PRINCIPLES = ['質問なき指導は行わない', '「どうすればいいですか？」は絶対NG', 'メモ無き同じ質問は絶対NG', '必ず自分で調べてから質問'];
 
-var S = { data: null, tab: 'home', trainee: null, progress: null, roleplays: null, notes: null, filter: '', sort: 'percent', openGoal: null };
+var S = { data: null, tab: 'home', trainee: null, progress: null, roleplays: null, notes: null, filter: '', sort: 'percent', openGoal: null, edit: false, flash: null };
 
 // ---------- 共通 ----------
 function call(fn) {
@@ -671,6 +711,7 @@ function snapshot() {
 
 function viewHome() {
   var wrap = h('div');
+  if (S.edit && canEditItems()) return viewEdit();
   if (!S.trainee) {
     append(wrap, h('div', { class: 'card' }, h('div', { class: 'empty' }, emptyArt(), h('p', { text: '研修生がまだいません。「管理」タブから追加してください。' }))));
     return wrap;
@@ -744,7 +785,7 @@ function viewHome() {
   if (guide) append(wrap, guide);
 
   // 研修フロー（セットアップ研修・依頼コンサル・2週間後試験など）
-  append(wrap, h('div', { class: 'section-head' }, h('h2', { text: '研修フロー' }), h('span', { class: 'en', text: 'TRAINING FLOW' })));
+  append(wrap, h('div', { class: 'section-head' }, h('h2', { text: '研修フロー' }), h('span', { class: 'en', text: 'TRAINING FLOW' }), h('div', { class: 'spacer' }), editToggle()));
   phases.forEach(function (p) {
     var d = p.tasks.filter(function (t) { return st[t.id] && st[t.id].done; }).length;
     var isCurrent = p === currentPhase;
@@ -783,8 +824,8 @@ function goalsCard(snap, st, editable) {
   var list = h('div', { class: 'goal-list' }, S.data.goals.map(function (g, i) { return goalItem(g, i, st, snap, editable); }));
   return h('div', { class: 'card' }, h('div', { class: 'row' },
     h('div', null, h('div', { class: 'eyebrow', text: 'Graduation' }), h('h2', { class: 'title', style: 'margin-bottom:6px', text: 'ルームアドバイザー卒業要件' })),
-    h('div', { class: 'spacer' }), h('span', { class: 'pill' + (done === S.data.goals.length ? ' solid' : ''), text: done + ' / ' + S.data.goals.length })),
-    h('p', { class: 'small muted', style: 'margin:0 0 12px', text: '9個すべて達成したらルームアドバイザーです。項目を押すと、くわしい内容が開きます。' }), grid, list);
+    h('div', { class: 'spacer' }), editToggle(), h('span', { class: 'pill' + (done === S.data.goals.length ? ' solid' : ''), text: done + ' / ' + S.data.goals.length })),
+    h('p', { class: 'small muted', style: 'margin:0 0 12px', text: S.data.goals.length + '個すべて達成したらルームアドバイザーです。項目を押すと、くわしい内容が開きます。' }), grid, list);
 }
 function goalItem(g, i, st, snap, editable) {
   var state = st[g.id];
@@ -910,6 +951,318 @@ function toggle(id, want, anchor, cb) {
       else if (after.phasesDone > before.phasesDone) celebrate('PHASE CLEAR', 'フェーズを1つ制覇しました');
     }
   }).catch(function (e) { if (cb) { cb.checked = !want; cb.disabled = false; } toast(errMsg(e), true); render(); });
+}
+
+// ---------- 編集モード（管理者のみ） ----------
+// 卒業要件・研修フロー・入社からの目安の項目を、文言修正・ドラッグで並び替え・追加・保留できる。
+// 保存先はアプリのデータ用スプレッド（タスクマスター・卒業条件）だけ。元の研修フローのスプレッドは変わらない。
+var GRIP = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>';
+var PEN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>';
+
+function canEditItems() { return S.data.me.role === '管理者'; }
+function editToggle() {
+  if (!canEditItems()) return null;
+  return h('button', { type: 'button', class: 'edit-toggle', onclick: function () { S.edit = true; render(); window.scrollTo(0, 0); } },
+    svg(PEN), '項目を編集');
+}
+function leaveEdit() {
+  S.edit = false;
+  S.progress = null; // 足した項目のチェック欄を作るため、進捗を読み直す
+  render();
+  window.scrollTo(0, 0);
+}
+
+/**
+ * つまみ（⋮⋮）をドラッグして並び替えられるリストにする。スマホは指で、PCはマウスで動かせる。
+ * つまみにフォーカスして ↑↓ キーでも動かせる。並びが変わったら onDone(新しいIDの並び) を呼ぶ。
+ */
+function sortable(list, onDone) {
+  var ids = function () { return Array.prototype.map.call(list.querySelectorAll(':scope > .erow, :scope > .egoal'), function (r) { return r.getAttribute('data-id'); }); };
+  // つまみが入れ子のリスト（卒業要件の中の「やること」など）のものなら、そちらのリストに任せる
+  var itemOf = function (grip) {
+    if (grip.closest('.elist') !== list) return null;
+    var el = grip;
+    while (el && el.parentNode !== list) el = el.parentNode;
+    return el && el.hasAttribute('data-id') ? el : null;
+  };
+  list.addEventListener('keydown', function (e) {
+    var grip = e.target.closest && e.target.closest('.grip');
+    if (!grip || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+    var item = itemOf(grip);
+    if (!item) return;
+    e.preventDefault();
+    var before = ids().join();
+    if (e.key === 'ArrowUp' && item.previousElementSibling) list.insertBefore(item, item.previousElementSibling);
+    if (e.key === 'ArrowDown' && item.nextElementSibling) list.insertBefore(item.nextElementSibling, item);
+    grip.focus();
+    if (ids().join() !== before) onDone(ids());
+  });
+  list.addEventListener('pointerdown', function (e) {
+    var grip = e.target.closest && e.target.closest('.grip');
+    if (!grip || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    var item = itemOf(grip);
+    if (!item) return;
+    e.preventDefault();
+    var before = ids().join();
+    var rect = item.getBoundingClientRect();
+    var offset = e.clientY - rect.top;
+    var ph = h('div', { class: 'erow-ph', style: 'height:' + rect.height + 'px' });
+    list.insertBefore(ph, item);
+    item.classList.add('dragging');
+    document.body.classList.add('sorting');
+    item.style.cssText = 'position:fixed;z-index:40;left:' + rect.left + 'px;top:' + rect.top + 'px;width:' + rect.width + 'px';
+    var lastY = e.clientY;
+    var timer = setInterval(function () {
+      // 画面の端まで持っていくと自動でスクロールする
+      var dy = lastY < 70 ? -14 : (lastY > window.innerHeight - 90 ? 14 : 0);
+      if (dy) { window.scrollBy(0, dy); place(lastY); }
+    }, 30);
+    function place(y) {
+      item.style.top = (y - offset) + 'px';
+      var others = Array.prototype.filter.call(list.children, function (c) { return c !== item && c !== ph && c.hasAttribute('data-id'); });
+      var target = null;
+      for (var i = 0; i < others.length; i++) {
+        var r = others[i].getBoundingClientRect();
+        if (y < r.top + r.height / 2) { target = others[i]; break; }
+      }
+      if (target) list.insertBefore(ph, target); else list.appendChild(ph);
+    }
+    function move(ev) { lastY = ev.clientY; place(ev.clientY); }
+    function end() {
+      clearInterval(timer);
+      document.removeEventListener('pointermove', move);
+      document.removeEventListener('pointerup', end);
+      document.removeEventListener('pointercancel', end);
+      item.classList.remove('dragging');
+      document.body.classList.remove('sorting');
+      item.style.cssText = '';
+      list.insertBefore(item, ph);
+      ph.remove();
+      if (ids().join() !== before) onDone(ids());
+    }
+    document.addEventListener('pointermove', move);
+    document.addEventListener('pointerup', end);
+    document.addEventListener('pointercancel', end);
+  });
+  return list;
+}
+
+function editRow(id, title, sub, onEdit, num) {
+  return h('div', { class: 'erow', 'data-id': id },
+    h('button', { type: 'button', class: 'grip', 'aria-label': title + ' を並び替え（ドラッグ、または↑↓キー）', title: 'ドラッグで並び替え', html: GRIP }),
+    num ? h('span', { class: 'enum', text: num }) : null,
+    h('div', { class: 'et' }, h('div', { text: title }), sub ? h('div', { class: 'small muted', text: sub }) : null),
+    h('button', { type: 'button', class: 'epen', 'aria-label': title + ' を編集', title: '編集', html: PEN, onclick: onEdit }));
+}
+
+/** S.data.tasks の中で、ids の項目だけをこの順に入れ替える（ほかの項目の位置はそのまま） */
+function reorderTasks(newIds) {
+  var set = {};
+  newIds.forEach(function (id) { set[id] = true; });
+  var byId = {};
+  var slots = [];
+  S.data.tasks.forEach(function (t, i) { if (set[t.id]) { slots.push(i); byId[t.id] = t; } });
+  var next = S.data.tasks.slice();
+  slots.forEach(function (pos, k) { next[pos] = byId[newIds[k]]; });
+  S.data.tasks = next;
+}
+function saveTaskOrder() {
+  return call('api_saveTaskOrder', S.data.tasks.map(function (t) { return t.id; }))
+    .then(function () { toast('並び順を保存しました'); })
+    .catch(editFailed);
+}
+function editFailed(e) {
+  toast(errMsg(e), true);
+  // 保存に失敗したら、スプレッドの今の状態に戻す
+  call('api_bootstrap').then(function (d) { S.data = d; render(); });
+}
+function taskList(tasks, opts) {
+  var list = h('div', { class: 'elist' }, tasks.map(function (t) {
+    return editRow(t.id, t.title, t.point, function () { openTaskEditor(t, opts); });
+  }));
+  return sortable(list, function (ids) { reorderTasks(ids); saveTaskOrder(); });
+}
+function addButton(label, onclick) { return h('button', { type: 'button', class: 'eadd', text: '＋ ' + label, onclick: onclick }); }
+
+/**
+ * 項目の編集・追加ダイアログ。t が null なら追加。
+ * opts: { phase, mode, after, phases（まとまりを選べるとき）, label }
+ */
+function openTaskEditor(t, opts) {
+  var isNew = !t;
+  var title = h('textarea', { rows: 2, maxlength: 500 });
+  title.value = t ? t.title : '';
+  var point = h('textarea', { rows: 3, maxlength: 500, placeholder: '補足・ポイント（なくてもOK）' });
+  point.value = t ? (t.point || '') : '';
+  var phaseSel = null;
+  var newPhase = null;
+  if (opts.phases) {
+    phaseSel = h('select', null, opts.phases.map(function (p) { return h('option', { value: p, text: p.replace(/^\d+\.\s*/, '') }); }),
+      h('option', { value: '__new', text: '＋ 新しいまとまりを作る' }));
+    phaseSel.value = t ? t.phase : opts.phase;
+    newPhase = h('input', { type: 'text', maxlength: 100, placeholder: '新しいまとまりの名前', style: phaseSel.value === '__new' ? '' : 'display:none' });
+    phaseSel.addEventListener('change', function () { newPhase.style.display = phaseSel.value === '__new' ? '' : 'none'; if (phaseSel.value === '__new') newPhase.focus(); });
+  }
+  var save = h('button', { class: 'btn', text: isNew ? '追加する' : '保存する' });
+  save.addEventListener('click', function () {
+    var phase = phaseSel ? (phaseSel.value === '__new' ? newPhase.value.trim() : phaseSel.value) : (t ? t.phase : opts.phase);
+    if (!title.value.trim()) { toast('項目名を入力してください', true); return; }
+    if (!phase) { toast('まとまりの名前を入力してください', true); return; }
+    save.disabled = true;
+    var p = isNew
+      ? call('api_addTask', { phase: phase, title: title.value, point: point.value, mode: opts.mode, after: opts.after || '' }).then(function (r) {
+          var at = -1;
+          S.data.tasks.forEach(function (x, i) {
+            if (opts.after ? x.id === opts.after : (x.phase === phase && x.mode === r.mode)) at = i;
+          });
+          S.data.tasks.splice(at < 0 ? S.data.tasks.length : at + 1, 0, r);
+          S.flash = r.id;
+          toast('「' + r.title + '」を追加しました');
+        })
+      : call('api_updateTask', t.id, { title: title.value, point: point.value, phase: phase }).then(function (r) {
+          t.title = r.title; t.point = r.point; t.phase = r.phase;
+          S.flash = t.id;
+          toast('保存しました');
+        });
+    p.then(function () { closeModal(); render(); }).catch(function (e) { save.disabled = false; toast(errMsg(e), true); });
+  });
+  var hold = isNew ? null : twoStep('この項目を外す', function () {
+    return call('api_holdTask', t.id).then(function () {
+      S.data.tasks = S.data.tasks.filter(function (x) { return x.id !== t.id; });
+      closeModal();
+      render();
+      toast('「' + t.title + '」を外しました（保留シートに残っています）');
+    });
+  });
+  openModal(isNew ? (opts.label || '項目を追加') : '項目を編集', h('div', null,
+    h('label', { class: 'field' }, '項目名', title),
+    h('label', { class: 'field' }, 'ポイント・補足', point),
+    phaseSel ? h('label', { class: 'field' }, 'まとまり', phaseSel, newPhase) : null,
+    h('div', { class: 'actions' }, save, h('div', { class: 'spacer' }), hold),
+    hold ? h('p', { class: 'small muted', style: 'margin:10px 0 0', text: '外した項目は消えずに「タスクマスター（保留）」シートに移ります。研修生のチェック記録も残るので、シートで戻せば元どおりです。' }) : null));
+  setTimeout(function () { title.focus(); }, 50);
+}
+
+function openGoalEditor(g) {
+  var title = h('textarea', { rows: 2, maxlength: 500 });
+  title.value = g.title;
+  var detail = h('textarea', { rows: 3, maxlength: 500 });
+  detail.value = g.detail || '';
+  var save = h('button', { class: 'btn', text: '保存する' });
+  save.addEventListener('click', function () {
+    save.disabled = true;
+    call('api_updateGoal', g.id, { title: title.value, detail: detail.value }).then(function (r) {
+      g.title = r.title; g.detail = r.detail;
+      S.flash = g.id;
+      closeModal(); render(); toast('保存しました');
+    }).catch(function (e) { save.disabled = false; toast(errMsg(e), true); });
+  });
+  openModal('卒業要件を編集', h('div', null,
+    h('label', { class: 'field' }, '要件名', title),
+    h('label', { class: 'field' }, '詳細', detail),
+    h('div', { class: 'actions' }, save)));
+  setTimeout(function () { title.focus(); }, 50);
+}
+
+function openPhaseRename(p) {
+  var name = h('input', { type: 'text', maxlength: 100 });
+  name.value = p.name.replace(/^\d+\.\s*/, '');
+  var save = h('button', { class: 'btn', text: '保存する' });
+  save.addEventListener('click', function () {
+    save.disabled = true;
+    call('api_renamePhase', p.name, name.value).then(function (r) {
+      S.data.tasks.forEach(function (t) { if (t.phase === p.name && isFlowTask(t)) t.phase = r.name; });
+      closeModal(); render(); toast('まとまりの名前を変えました');
+    }).catch(function (e) { save.disabled = false; toast(errMsg(e), true); });
+  });
+  openModal('まとまりの名前を変える', h('div', null, h('label', { class: 'field' }, 'まとまりの名前', name), h('div', { class: 'actions' }, save)));
+  setTimeout(function () { name.focus(); }, 50);
+}
+
+/** まとまりごと上下に動かす（中の項目の順番はそのまま） */
+function movePhase(phases, i, dir) {
+  var order = phases.slice();
+  var tmp = order[i]; order[i] = order[i + dir]; order[i + dir] = tmp;
+  var ids = [];
+  order.forEach(function (p) { p.tasks.forEach(function (t) { ids.push(t.id); }); });
+  reorderTasks(ids);
+  render();
+  saveTaskOrder();
+}
+
+function viewEdit() {
+  var wrap = h('div');
+  append(wrap, h('div', { class: 'card ink edit-bar' },
+    h('div', { class: 'row' }, h('span', { class: 'eyebrow', text: 'Edit Mode' }), h('strong', { text: '項目の編集' }), h('div', { class: 'spacer' }),
+      h('button', { class: 'btn', text: '編集を終える', onclick: leaveEdit })),
+    h('p', { text: '⋮⋮ をドラッグで並び替え、✎ で文言の修正・外す。変更はすぐ「研修アプリデータ」に保存され、元の研修フローのスプレッドは変わりません。' })));
+
+  // 卒業要件
+  var goalList = h('div', { class: 'elist' }, S.data.goals.map(function (g, i) {
+    var subs = goalTasks(g.id);
+    var subPhase = subs.length ? subs[0].phase : g.title.replace(/（.*?）/g, '');
+    return h('div', { class: 'egoal', 'data-id': g.id },
+      editRow(g.id, g.title, g.detail, function () { openGoalEditor(g); }, ('0' + (i + 1)).slice(-2)),
+      h('details', { open: S.openGoal === g.id, ontoggle: function () { if (this.open) S.openGoal = g.id; else if (S.openGoal === g.id) S.openGoal = null; } },
+        h('summary', { text: 'この要件でやること（' + subs.length + '件）' }),
+        taskList(subs, { phase: subPhase, mode: g.id }),
+        addButton('やることを追加', function () { openTaskEditor(null, { phase: subPhase, mode: g.id, label: g.title.replace(/（.*?）/g, '') + ' にやることを追加' }); })));
+  }));
+  sortable(goalList, function (ids) {
+    var byId = {};
+    S.data.goals.forEach(function (g) { byId[g.id] = g; });
+    S.data.goals = ids.map(function (id) { return byId[id]; });
+    render();
+    call('api_saveGoalOrder', ids).then(function () { toast('並び順を保存しました'); }).catch(editFailed);
+  });
+  append(wrap, h('div', { class: 'card' }, h('div', { class: 'eyebrow', text: 'Graduation' }), h('h2', { class: 'title', text: 'ルームアドバイザー卒業要件' }), goalList));
+
+  // 入社からの目安
+  var cols = [];
+  S.data.tasks.forEach(function (t) {
+    if (String(t.mode).indexOf('目安：') !== 0) return;
+    var c = cols.filter(function (x) { return x.mode === t.mode; })[0];
+    if (!c) cols.push(c = { mode: t.mode, label: t.mode.slice(3), phase: t.phase, tasks: [] });
+    c.tasks.push(t);
+  });
+  if (cols.length) {
+    append(wrap, h('div', { class: 'card' }, h('div', { class: 'eyebrow', text: 'Roadmap' }), h('h2', { class: 'title', text: '入社からの目安' }),
+      h('div', { class: 'eguide' }, cols.map(function (c) {
+        return h('div', null, h('h3', { text: c.label }), taskList(c.tasks, { phase: c.phase, mode: c.mode }),
+          addButton('追加', function () { openTaskEditor(null, { phase: c.phase, mode: c.mode, label: c.label + ' に追加' }); }));
+      }))));
+  }
+
+  // 研修フロー
+  append(wrap, h('div', { class: 'section-head' }, h('h2', { text: '研修フロー' }), h('span', { class: 'en', text: 'TRAINING FLOW' })));
+  var phases = phasesOf();
+  var phaseNames = phases.map(function (p) { return p.name; });
+  phases.forEach(function (p, i) {
+    var mode = p.memo ? 'メモ' : 'チェック';
+    var opts = { phase: p.name, mode: mode, phases: phaseNames };
+    append(wrap, h('div', { class: 'ephase' },
+      h('div', { class: 'ephase-head' },
+        h('strong', { text: p.name.replace(/^\d+\.\s*/, '') }),
+        p.memo ? h('span', { class: 'pill jp', text: 'メモ' }) : null,
+        h('button', { type: 'button', class: 'icon-btn', text: '名前', 'aria-label': 'まとまりの名前を変える', onclick: function () { openPhaseRename(p); } }),
+        h('button', { type: 'button', class: 'icon-btn', text: '↑', 'aria-label': 'まとまりを上へ', disabled: i === 0, onclick: function () { movePhase(phases, i, -1); } }),
+        h('button', { type: 'button', class: 'icon-btn', text: '↓', 'aria-label': 'まとまりを下へ', disabled: i === phases.length - 1, onclick: function () { movePhase(phases, i, 1); } })),
+      taskList(p.tasks, opts),
+      addButton('項目を追加', function () { openTaskEditor(null, { phase: p.name, mode: mode, phases: phaseNames, label: p.name.replace(/^\d+\.\s*/, '') + ' に項目を追加' }); })));
+  });
+  append(wrap, addButton('新しいまとまりを作る', function () {
+    openTaskEditor(null, { phase: '__new', mode: 'チェック', phases: phaseNames, label: '新しいまとまりを作る' });
+  }));
+  append(wrap, h('div', { class: 'edit-done' }, h('button', { class: 'btn', text: '編集を終える', onclick: leaveEdit })));
+  if (S.flash) {
+    var id = S.flash;
+    S.flash = null;
+    setTimeout(function () {
+      var el = wrap.querySelector('.erow[data-id="' + id + '"]');
+      if (el) { el.classList.add('saved'); el.scrollIntoView({ block: 'nearest' }); }
+    }, 0);
+  }
+  return wrap;
 }
 
 // ---------- みんなの進捗 ----------

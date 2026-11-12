@@ -205,6 +205,66 @@ as('t.oda@monochro-inc.com');
 assert.ok(run(`api_getProgress('小田天誠')`).rows.some((r) => r.id === 'T099'));
 assert.strictEqual(run(`api_setCheck('小田天誠', 'T099', true)`).done, true);
 
+// ---------- アプリからの項目の編集・並び替え（管理者のみ） ----------
+const srcBefore = JSON.stringify(ctx.books.SRC.sheets[0].cells);
+const ids0 = run('api_bootstrap()').tasks.map((t) => t.id);
+// 研修生・教育担当は編集できない
+as('t.oda@monochro-inc.com');
+assert.throws(() => run(`api_saveTaskOrder(${JSON.stringify(ids0)})`), /管理者だけ/);
+as('ito@monochro-inc.com');
+assert.throws(() => run(`api_updateTask('T001', {title:'x'})`), /管理者だけ/);
+as('owner@monochro-inc.com');
+// 並び替え：渡したIDの順に並び、渡していないID（ほかの人が足した行など）は後ろに残る
+const swapped = ids0.slice(1, 3).reverse().concat(ids0[0]);
+run(`api_saveTaskOrder(${JSON.stringify(swapped.concat(['NOPE']))})`);
+let ids1 = run('api_bootstrap()').tasks.map((t) => t.id);
+assert.deepStrictEqual(ids1.slice(0, 3), swapped);
+assert.deepStrictEqual(ids1.slice().sort(), ids0.slice().sort(), 'no rows lost or added');
+// 文言の修正：タスクマスターと、研修生の進捗シートの「内容」がそろう。チェックは残る
+const upd = run(`api_updateTask('T099', {title:'  新しいタスク（改）  ', point:'メモ\\r\\nです'})`);
+assert.deepStrictEqual([upd.title, upd.point, upd.phase], ['新しいタスク（改）', 'メモ\nです', 'セットアップ研修']);
+assert.strictEqual(run('api_bootstrap()').tasks.find((t) => t.id === 'T099').title, '新しいタスク（改）');
+const progSheet = ss.getSheetByName('進捗_小田天誠');
+assert.ok(progSheet.cells.some((r) => r[0] === 'T099' && r[4] === '新しいタスク（改）' && r[5] === true));
+assert.throws(() => run(`api_updateTask('T099', {title:'  '})`), /項目名/);
+// まとまりを移す
+run(`api_updateTask('T099', {title:'新しいタスク（改）', point:'', phase:'依頼コンサル'})`);
+assert.strictEqual(run('api_bootstrap()').tasks.find((t) => t.id === 'T099').phase, '依頼コンサル');
+// 卒業要件の文言と並び
+run(`api_updateGoal('G03', {title:'OJT 12件', detail:'OJT用レポートで数える'})`);
+assert.strictEqual(run('api_bootstrap()').goals.find((g) => g.id === 'G03').title, 'OJT 12件');
+run(`api_saveGoalOrder(['G09','G01'])`);
+assert.deepStrictEqual(run('api_bootstrap()').goals.map((g) => g.id).slice(0, 3), ['G09', 'G01', 'G02']);
+assert.strictEqual(run('api_bootstrap()').goals.length, 9);
+// 追加：同じまとまりの最後（after を指定すればその直後）に入り、IDは続きの番号
+const add1 = run(`api_addTask({phase:'セットアップ研修', title:'PC設定', point:'', mode:'チェック'})`);
+assert.strictEqual(add1.id, 'T100', 'next after T099 (including held rows)');
+let tk = run('api_bootstrap()').tasks;
+const lastSetup = tk.map((t) => t.phase === 'セットアップ研修' && t.mode === 'チェック').lastIndexOf(true);
+assert.strictEqual(tk[lastSetup].id, 'T100');
+const add2 = run(`api_addTask({phase:'セットアップ研修', title:'名刺発注', mode:'チェック', after:'${tk[0].id}'})`);
+tk = run('api_bootstrap()').tasks;
+assert.strictEqual(tk[1].id, add2.id);
+const addGuide = run(`api_addTask({phase:'入社からの目安', title:'初契約', mode:'目安：〜1ヶ月'})`);
+assert.ok(/^M\d{3}$/.test(addGuide.id));
+// 足した項目は研修生の進捗シートにも出る
+as('t.oda@monochro-inc.com');
+assert.ok(run(`api_getProgress('小田天誠')`).rows.some((r) => r.id === 'T100'));
+// 外す：保留シートに移り、進捗の記録は残る（数えなくなるだけ）
+as('owner@monochro-inc.com');
+run(`api_holdTask('T099')`);
+assert.ok(!run('api_bootstrap()').tasks.some((t) => t.id === 'T099'));
+assert.ok(ss.getSheetByName('タスクマスター（保留）').cells.some((r) => r[0] === 'T099'));
+assert.ok(progSheet.cells.some((r) => r[0] === 'T099' && r[5] === true), 'check history kept');
+assert.ok(!run(`api_getProgress('小田天誠')`).rows.some((r) => r.id === 'T099'));
+// まとまりの名前を変える（卒業要件の「やること」など、ほかの扱いの行は変えない）
+const rn = run(`api_renamePhase('依頼コンサル', '依頼コンサル（小嶋）')`);
+assert.ok(rn.count >= 1);
+assert.ok(!run('api_bootstrap()').tasks.some((t) => t.phase === '依頼コンサル'));
+assert.throws(() => run(`api_renamePhase('ないまとまり', 'x')`), /見つかりません/);
+// 元の研修フローのスプレッドには一切書き込まない
+assert.strictEqual(JSON.stringify(ctx.books.SRC.sheets[0].cells), srcBefore);
+
 // メンバー表にいない人は使えない
 as('stranger@example.com');
 assert.throws(() => run('api_bootstrap()'), /権限がありません/);
